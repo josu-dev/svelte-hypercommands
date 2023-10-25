@@ -1,0 +1,25 @@
+:root {
+  --layout-bg-color: rgb(2 6 23);
+  --layout-color: rgb(244 244 245);
+}
+
+html,
+body {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  height: 100%;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+body,
+body::backdrop {
+  background-color: var(--layout-bg-color);
+  color: var(--layout-color);
+}
+
+body>div {
+  height: 100%;
+  overflow: hidden;
+}
