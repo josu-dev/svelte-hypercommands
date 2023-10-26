@@ -17,6 +17,7 @@ import type {
 function name(name?: string): string {
 	return name ? `command-palette-${name}` : 'command-palette';
 }
+
 const defaults = {
 	defaultOpen: false,
 	onOpenChange: undefined,
@@ -80,19 +81,13 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
 	let _inputElement: HTMLInputElement | null = null;
 
-	/**
-	 * The fuse instance used for searching, the array of commands will be mutated
-	 * by fuse when its and add or remove method is called, so must me a shallow copy
-	 * of the commands array at least.
-	 */
-	const searcher = new Searcher<CommandInternal>(
-		[],
-		(item) =>
+	const searcher = new Searcher<CommandInternal>({
+		mapper: (item) =>
 			item.command.name +
 			item.command.description +
-			item.command.keywords.join(' ') +
+			item.command.keywords.join('') +
 			item.command.category
-	);
+	});
 
 	function togglePalette() {
 		open.update(($open) => {
@@ -315,7 +310,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 			if (idx >= 0) {
 				_results.splice(idx, 1);
 			}
-			searcher.remove((doc) => doc.command.id === removedCommand.id);
+			searcher.remove((cmd) => cmd.command.id === removedCommand.id);
 		}
 
 		updateResults(true);
@@ -409,7 +404,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 			}
 		}
 		const fuseResult = searcher.search(pattern);
-		const commandResults = fuseResult.map((result) => result.item.command);
+		const commandResults = fuseResult.map((cmd) => cmd.command);
 
 		results.update(($state) => {
 			$state = commandResults;
