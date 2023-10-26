@@ -10,7 +10,7 @@
 			description: 'This command was dynamically added to the command palette',
 			action: () => {
 				console.log('Dynamic command was executed');
-			}
+			},
 		},
 		{
 			id: 'alert-command',
@@ -18,8 +18,8 @@
 			description: 'This command will alert you',
 			action: () => {
 				alert('Alert command was executed');
-			}
-		}
+			},
+		},
 	]);
 
 	/** @type {() => void}*/

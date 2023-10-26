@@ -15,7 +15,7 @@
 				description: 'Open the command palette',
 				action: () => {
 					console.log('Open command palette');
-				}
+				},
 			},
 			{
 				id: 'open-dialog',
@@ -23,8 +23,8 @@
 				description: 'Open the dialog',
 				action: () => {
 					console.log('Open dialog');
-				}
-			}
+				},
+			},
 		]);
 	});
 </script>

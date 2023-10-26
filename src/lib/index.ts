@@ -1,1 +1,3 @@
-// Reexport your entry components here
+import { createCommandPalette } from './command-palette/create';
+
+export { createCommandPalette };

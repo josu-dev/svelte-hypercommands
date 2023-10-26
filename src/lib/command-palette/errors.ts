@@ -6,7 +6,7 @@ export class HyperCommandError extends Error {
 }
 
 export class DuplicatedIDError extends HyperCommandError {
-	id: string | undefined;
+	readonly id: string | undefined;
 
 	constructor(message: string, id: string | undefined = undefined) {
 		super(message);

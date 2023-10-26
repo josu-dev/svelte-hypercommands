@@ -1,3 +1,4 @@
+import type { RecordToWritables } from '$lib/utils/types';
 import type { Action } from 'svelte/action';
 import type { Writable } from 'svelte/store';
 
@@ -9,9 +10,9 @@ export type CreateCommandPaletteOptions = {
 	onOpenChange?: ChangeFn<boolean>;
 	commands?: Command[];
 	results?: Command[];
-	history?: CommandId[];
+	history?: CommandID[];
 	selectedIdx?: number | undefined;
-	selectedId?: CommandId;
+	selectedId?: CommandID;
 	currentCommand?: Command | undefined;
 	element?: HTMLElement | undefined;
 	error?:
@@ -29,38 +30,43 @@ export type CreateCommandPaletteOptions = {
 // export type CommandPaletteOptions = CommandPalette['options'];
 // export type CommandPaletteStates = CommandPalette['states'];
 
-export type CommandId = string;
+export type HCState = undefined | Writable<any>;
+
+export type CommandID = string;
 
 export type CommandActionArgs = {
 	event: Event;
-	commandsState: Writable<any>;
+	hcState: HCState;
 };
 
 export type CommandAction = (args: CommandActionArgs) => void | Promise<void>;
 
+export type CommandUnregisterCallbackArgs = { command: Command; hcState: HCState };
+export type CommandUnregisterCallback = (arg: CommandUnregisterCallbackArgs) => void;
+
 export type CommandDefinition = {
-	id?: CommandId;
+	id?: CommandID;
 	name: string;
 	description?: string;
 	keywords?: string[];
 	category?: string;
 	action?: CommandAction;
-	onUnregister?: () => void;
+	unregisterCallback?: CommandUnregisterCallback;
 };
 
 export type Command = {
-	id: CommandId;
+	id: CommandID;
 	name: string;
 	description: string;
 	keywords: string[];
 	category: string;
 	action: CommandAction;
-	onUnregister?: () => void;
+	unregisterCallback?: CommandUnregisterCallback;
 };
 
 export type CommandElementAction = Action<HTMLElement, Command>;
 
-export type CommandInternal = {
+export type InternalCommand = {
 	command: Command;
 	action: CommandElementAction;
 };
@@ -68,7 +74,7 @@ export type CommandInternal = {
 export type CommandPaletteState = {
 	commands: Command[];
 	results: Command[];
-	history: CommandId[];
+	history: CommandID[];
 	selectedIdx?: number;
 	currentCommand?: Command;
 	element?: HTMLElement;
@@ -77,23 +83,19 @@ export type CommandPaletteState = {
 	open: boolean;
 };
 
-export type RecordToWritables<T extends Record<string, any>> = {
-	[K in keyof T]: Writable<T[K]>;
-};
-
 export type CommandPaletteStateStores = RecordToWritables<CommandPaletteState>;
 
-export type CommandMatcher = CommandId | Command | ((command: Command) => boolean);
+export type CommandMatcher = CommandID | Command | ((command: Command) => boolean);
 
-export type UnregisterCommand = (id: CommandId) => void;
+export type UnregisterCommand = (id: CommandID) => void;
 
 export type UnregisterCallback = () => void;
 
 export type RegisterCommand = <
-	T extends CommandDefinition | Command | Command[] | CommandDefinition[]
+	T extends CommandDefinition | Command | Command[] | CommandDefinition[],
 >(
 	command: T,
-	override?: boolean
+	override?: boolean,
 ) => UnregisterCallback;
 
 export type EmptyModes = 'all' | 'history' | 'none';

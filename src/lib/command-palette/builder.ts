@@ -1,10 +1,8 @@
 import type { Action } from 'svelte/action';
-import type { Subscriber, Unsubscriber } from 'svelte/store';
-import { derived, type Readable, type Stores, type StoresValues } from 'svelte/store';
+import type { Readable, Stores, StoresValues, Subscriber, Unsubscriber } from 'svelte/store';
+import { derived } from 'svelte/store';
 
 export function noop() {}
-
-export function noopAction() {}
 
 export function lightable<T>(value: T): Readable<T> {
 	function subscribe(run: Subscriber<T>): Unsubscriber {
@@ -16,12 +14,6 @@ export function lightable<T>(value: T): Readable<T> {
 	return { subscribe };
 }
 
-export function getElementByMeltId(id: string) {
-	if (!window) return null;
-	const el = document.querySelector(`[data-melt-id="${id}"]`);
-	return el instanceof HTMLElement ? el : null;
-}
-
 export const hiddenAction = <T extends Record<string, unknown>>(obj: T) => {
 	return new Proxy(obj, {
 		get(target, prop, receiver) {
@@ -29,7 +21,7 @@ export const hiddenAction = <T extends Record<string, unknown>>(obj: T) => {
 		},
 		ownKeys(target) {
 			return Reflect.ownKeys(target).filter((key) => key !== 'action');
-		}
+		},
 	});
 };
 
@@ -40,7 +32,7 @@ type BuilderCallback<S extends Stores | undefined> = S extends Stores
 	  () => Record<string, any> | ((...args: any[]) => Record<string, any>);
 
 const isFunctionWithParams = (
-	fn: unknown
+	fn: unknown,
 ): fn is (...args: unknown[]) => Record<string, unknown> => {
 	return typeof fn === 'function';
 };
@@ -49,7 +41,7 @@ type BuilderArgs<
 	S extends Stores | undefined,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	A extends Action<any, any>,
-	R extends BuilderCallback<S>
+	R extends BuilderCallback<S>,
 > = {
 	stores?: S;
 	action?: A;
@@ -61,7 +53,7 @@ type BuilderStore<
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	A extends Action<any, any>,
 	R extends BuilderCallback<S>,
-	Name extends string
+	Name extends string,
 > = Readable<
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	ReturnType<R> extends (...args: any) => any
@@ -78,7 +70,7 @@ export function builder<
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	A extends Action<any, any>,
 	R extends BuilderCallback<S>,
-	Name extends string
+	Name extends string,
 >(name: Name, args?: BuilderArgs<S, A, R>): ExplicitBuilderReturn<S, A, R, Name> {
 	const { stores, action, returned } = args ?? {};
 
@@ -92,7 +84,7 @@ export function builder<
 						return hiddenAction({
 							...result(...args),
 							[`data-melt-${name}`]: '',
-							action: action ?? noop
+							action: action ?? noop,
 						});
 					};
 					fn.action = action ?? noop;
@@ -102,7 +94,7 @@ export function builder<
 				return hiddenAction({
 					...result,
 					[`data-melt-${name}`]: '',
-					action: action ?? noop
+					action: action ?? noop,
 				});
 			});
 		} else {
@@ -115,7 +107,7 @@ export function builder<
 					return hiddenAction({
 						...result(...args),
 						[`data-melt-${name}`]: '',
-						action: action ?? noop
+						action: action ?? noop,
 					});
 				};
 				resultFn.action = action ?? noop;
@@ -127,8 +119,8 @@ export function builder<
 				hiddenAction({
 					...result,
 					[`data-melt-${name}`]: '',
-					action: action ?? noop
-				})
+					action: action ?? noop,
+				}),
 			);
 		}
 	})() as BuilderStore<S, A, R, Name>;
@@ -147,19 +139,5 @@ export type ExplicitBuilderReturn<
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	A extends Action<any, any>,
 	R extends BuilderCallback<S>,
-	Name extends string
+	Name extends string,
 > = BuilderStore<S, A, R, Name> & A;
-
-export function createElHelpers<Part extends string = string>(prefix: string) {
-	const name = (part?: Part) => (part ? `${prefix}-${part}` : prefix);
-	const attribute = (part?: Part) => `data-melt-${prefix}${part ? `-${part}` : ''}`;
-	const selector = (part?: Part) => `[data-melt-${prefix}${part ? `-${part}` : ''}]`;
-	const getEl = (part?: Part) => document.querySelector(selector(part));
-
-	return {
-		name,
-		attribute,
-		selector,
-		getEl
-	};
-}

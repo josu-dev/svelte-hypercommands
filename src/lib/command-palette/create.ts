@@ -1,5 +1,5 @@
 import { Searcher } from '$lib/search';
-import { log, randomId } from '$lib/utils/funcs';
+import { log, randomID } from '$lib/utils/funcs';
 import { addValueAccessor, writableWithValue, writablesFromRecord } from '$lib/utils/stores';
 import { get, type Writable } from 'svelte/store';
 import { builder } from './builder';
@@ -8,13 +8,13 @@ import { normalizeCommand } from './helpers';
 import type {
 	Command,
 	CommandDefinition,
-	CommandInternal,
 	CommandMatcher,
 	CreateCommandPaletteOptions,
-	EmptyModes
+	EmptyModes,
+	InternalCommand,
 } from './types';
 
-function name(name?: string): string {
+function dataName(name?: string): string {
 	return name ? `command-palette-${name}` : 'command-palette';
 }
 
@@ -30,7 +30,7 @@ const defaults = {
 	element: undefined,
 	selectedIdx: undefined,
 	selectedId: undefined,
-	emptyMode: 'all' as EmptyModes
+	emptyMode: 'all' as EmptyModes,
 };
 
 const screenReaderStyles = `
@@ -64,29 +64,29 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 		element,
 		emptyMode,
 		selectedId,
-		selectedIdx
+		selectedIdx,
 	} = _options;
 
 	const ids = {
-		container: randomId(),
-		label: randomId(),
-		searchForm: randomId(),
-		searchInput: randomId(),
-		resultList: randomId()
+		container: randomID(),
+		label: randomID(),
+		searchForm: randomID(),
+		searchInput: randomID(),
+		resultList: randomID(),
 	};
 
-	const _results: CommandInternal[] = [];
+	const _results: InternalCommand[] = [];
 
 	let _emptyMode: EmptyModes = defaults.emptyMode;
 
 	let _inputElement: HTMLInputElement | null = null;
 
-	const searcher = new Searcher<CommandInternal>({
+	const searcher = new Searcher<InternalCommand>({
 		mapper: (item) =>
 			item.command.name +
 			item.command.description +
 			item.command.keywords.join('') +
-			item.command.category
+			item.command.category,
 	});
 
 	function togglePalette() {
@@ -117,7 +117,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 	const cleanupCallbacks: (() => void)[] = [
 		emptyMode.subscribe(($emptyMode) => {
 			_emptyMode = $emptyMode;
-		})
+		}),
 	];
 	if (open.unsubscribe) {
 		cleanupCallbacks.push(open.unsubscribe);
@@ -255,13 +255,13 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 			destroy() {
 				node.removeEventListener('click', commandClick as any);
 				unsunscribe();
-			}
+			},
 		};
 	}
 
 	function registerCommand<T extends CommandDefinition | Command | Command[] | CommandDefinition[]>(
 		command: T,
-		override: boolean = false
+		override: boolean = false,
 	) {
 		const unsafeCommands = Array.isArray(command) ? command : [command];
 
@@ -283,14 +283,14 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
 				if (!override) {
 					throw new DuplicatedIDError(
-						`ID ${newCommand.id} is not unique, shared between existing command ${$commands[existingIndex].name} and new command ${newCommand.name}`
+						`ID ${newCommand.id} is not unique, shared between existing command ${$commands[existingIndex].name} and new command ${newCommand.name}`,
 					);
 				}
 
 				newCommands.push(newCommand);
 				const [oldCommand] = $commands.splice(existingIndex, 1, newCommand);
 
-				oldCommand.onUnregister?.();
+				oldCommand.unregisterCallback?.({ command: oldCommand, hcState: undefined });
 				removedCommands.push(oldCommand);
 			}
 
@@ -300,7 +300,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 		for (const newCommand of newCommands) {
 			const _command = {
 				command: newCommand,
-				action: commandAction
+				action: commandAction,
 			};
 			_results.push(_command);
 			searcher.add(_command);
@@ -325,7 +325,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
 					const [oldCommand] = $commands.splice(index, 1);
 
-					oldCommand.onUnregister?.();
+					oldCommand.unregisterCallback?.({ command: oldCommand, hcState: undefined });
 					const idx = _results.findIndex((result) => result.command.id === oldCommand.id);
 					if (idx >= 0) {
 						_results.splice(idx, 1);
@@ -365,7 +365,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
 				const [oldCommand] = $commands.splice(index, 1);
 
-				oldCommand.onUnregister?.();
+				oldCommand.unregisterCallback?.({ command: oldCommand, hcState: undefined });
 				removedCommands.push(oldCommand);
 			}
 
@@ -470,11 +470,11 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 		});
 	}
 
-	const commandPalette = builder(name(), {
+	const commandPalette = builder(dataName(), {
 		stores: [],
 		returned: () => {
 			return {
-				id: ids.container
+				id: ids.container,
 			};
 		},
 		action: (node) => {
@@ -486,27 +486,27 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 					for (const cleanup of cleanupCallbacks) {
 						cleanup();
 					}
-				}
+				},
 			};
-		}
+		},
 	});
 
-	const label = builder(name('label'), {
+	const label = builder(dataName('label'), {
 		stores: [],
 		returned: () => {
 			return {
 				id: ids.label,
 				for: ids.searchInput,
-				style: screenReaderStyles
+				style: screenReaderStyles,
 			};
-		}
+		},
 	});
 
-	const form = builder(name('search-form'), {
+	const form = builder(dataName('search-form'), {
 		stores: [],
 		returned: () => {
 			return {
-				id: ids.searchForm
+				id: ids.searchForm,
 			};
 		},
 		action: (node) => {
@@ -539,19 +539,19 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 			return {
 				destroy() {
 					node.removeEventListener('submit', onSubmit);
-				}
+				},
 			};
-		}
+		},
 	});
 
-	const input = builder(name('search-input'), {
+	const input = builder(dataName('search-input'), {
 		stores: [],
 		returned: () => {
 			return {
 				id: ids.searchInput,
 				type: 'text',
 				placeholder: 'Search for commands...',
-				'aria-labelledby': ids.label
+				'aria-labelledby': ids.label,
 			};
 		},
 		action: (node) => {
@@ -592,16 +592,16 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 				destroy() {
 					node.removeEventListener('input', onInput);
 					node.removeEventListener('keydown', onKeydown);
-				}
+				},
 			};
-		}
+		},
 	});
 
-	const result = builder(name('result'), {
+	const result = builder(dataName('result'), {
 		stores: [],
 		returned: () => {
 			return {
-				role: 'button'
+				role: 'button',
 			};
 		},
 		action: (node, command: Command) => {
@@ -643,9 +643,9 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 				destroy() {
 					node.removeEventListener('click', onClick);
 					unsunscribe();
-				}
+				},
 			};
-		}
+		},
 	});
 
 	return {
@@ -654,7 +654,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 			label: label,
 			form: form,
 			input: input,
-			result: result
+			result: result,
 		},
 		states: {
 			commands,
@@ -663,7 +663,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 			inputText,
 			currentCommand,
 			error,
-			open
+			open,
 		},
 		options,
 		methods: {
@@ -672,7 +672,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 			search: searchFn,
 			openPalette,
 			closePalette,
-			togglePalette
-		}
+			togglePalette,
+		},
 	};
 }

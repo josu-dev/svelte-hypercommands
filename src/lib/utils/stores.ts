@@ -4,17 +4,17 @@ import type {
 	Subscriber,
 	Unsubscriber,
 	Updater,
-	Writable
+	Writable,
 } from 'svelte/store';
 import { writable } from 'svelte/store';
 import type { OnChangeCallback, SideEffectCallback } from './types';
 
 export type WritablesFromRecordFn = <
 	T extends Record<string, unknown>,
-	OmitedKeys extends (keyof T)[] | keyof T = []
+	OmitedKeys extends (keyof T)[] | keyof T = [],
 >(
 	record: T,
-	omit?: OmitedKeys
+	omit?: OmitedKeys,
 ) => {
 	[K in keyof Omit<
 		T,
@@ -42,7 +42,7 @@ export function writablesFromRecord<
 				: never
 		>]: Writable<T[K]>;
 	},
-	OmitedKeys extends (keyof T & string)[] | (keyof T & string) | undefined = undefined
+	OmitedKeys extends (keyof T & string)[] | (keyof T & string) | undefined = undefined,
 >(record: T, omit?: OmitedKeys): Return {
 	const toOmit = omit
 		? typeof omit === 'string'
@@ -61,7 +61,7 @@ export function writablesFromRecord<
 
 export function writableWithOnChange<T>(
 	store: Writable<T>,
-	onChange: OnChangeCallback<T> | undefined = undefined
+	onChange: OnChangeCallback<T> | undefined = undefined,
 ) {
 	function update(updater: Updater<T>, sideEffect: SideEffectCallback<T> | undefined = undefined) {
 		store.update((curr) => {
@@ -82,7 +82,7 @@ export function writableWithOnChange<T>(
 	return {
 		subscribe: store.subscribe,
 		update,
-		set
+		set,
 	};
 }
 
@@ -114,7 +114,7 @@ export function addValueAccessor<T>(store: Writable<T>) {
 		get value() {
 			return value;
 		},
-		unsubscribe
+		unsubscribe,
 	};
 }
 export function safe_not_equal(a: any, b: any): boolean {
@@ -136,7 +136,10 @@ export type WritableWithValue<T> = Writable<T> & {
 };
 
 const subscriber_queue: any[] = [];
-export function writableWithValue<T>(value: T, start: StartStopNotifier<T> = noop): WritableWithValue<T> {
+export function writableWithValue<T>(
+	value: T,
+	start: StartStopNotifier<T> = noop,
+): WritableWithValue<T> {
 	let stop: Unsubscriber | null;
 	const subscribers: Set<[Subscriber<T>, Invalidator<T>]> = new Set();
 	function set(new_value: T): void {
@@ -185,6 +188,6 @@ export function writableWithValue<T>(value: T, start: StartStopNotifier<T> = noo
 		subscribe,
 		get value() {
 			return value;
-		}
+		},
 	};
 }

@@ -1,13 +1,10 @@
 export const isBrowser = typeof document !== 'undefined';
 
-export function randomId() {
+export function randomID(): string {
 	return crypto.getRandomValues(new Uint32Array(1))[0].toString(16);
 }
 
-export function noopAction() {}
-
-
-function _log(type: 'log' | 'info' | 'warn' | 'error', ...args: any[]) {
+function _log(type: 'log' | 'info' | 'warn' | 'error', ...args: any[]): void {
 	console[type](...args);
 }
 
