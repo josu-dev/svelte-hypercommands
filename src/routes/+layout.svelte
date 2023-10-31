@@ -1,6 +1,7 @@
 <script>
   import { defineCommands } from '$lib/command-palette/helpers';
   import CommandPalette from '$lib/default/CommandPalette.svelte';
+  import { removeAllKeyBindings } from '../../.ignored/custom_tinykeys';
   import { onMount } from 'svelte';
   import '../app.css';
 
@@ -26,6 +27,7 @@
         },
       },
     ]);
+    removeAllKeyBindings(window);
   });
 </script>
 

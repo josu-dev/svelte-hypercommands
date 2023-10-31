@@ -1,3 +1,4 @@
+import { addKeyBinding } from '$lib/keyboard';
 import { Searcher } from '$lib/search';
 import { log, randomID } from '$lib/utils/funcs';
 import { addValueAccessor, writableWithValue, writablesFromRecord } from '$lib/utils/stores';
@@ -111,6 +112,18 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         $open = false;
         return $open;
       });
+    }
+  }
+
+  function shortCutOpenPalette(event: KeyboardEvent) {
+    event.preventDefault();
+    if (!open.value) {
+      open.update(($open) => {
+        $open = true;
+        return $open;
+      });
+    } else {
+      _inputElement?.focus();
     }
   }
 
@@ -479,7 +492,13 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     },
     action: (node) => {
       // const cleanupDefaults = registerDefaultListeners();
-
+      const cleanupOpenPalette1 = addKeyBinding(window, '$mod+Shift+P', shortCutOpenPalette);
+      const cleanupOpenPalette2 = addKeyBinding(window, '$mod+P', shortCutOpenPalette);
+      if (cleanupOpenPalette1) {
+        cleanupCallbacks.push(cleanupOpenPalette1);
+      }if (cleanupOpenPalette2) {
+        cleanupCallbacks.push(cleanupOpenPalette2);
+      }
       return {
         destroy() {
           // cleanupDefaults();
