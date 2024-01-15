@@ -9,6 +9,8 @@ import { normalizeCommand } from './helpers';
 import type {
   Command,
   CommandDefinition,
+  CommandExecutionSource,
+  CommandID,
   CommandMatcher,
   CreateCommandPaletteOptions,
   EmptyModes,
@@ -122,28 +124,20 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         $open = true;
         return $open;
       });
-    } else {
-      _inputElement?.focus();
     }
+    _inputElement?.focus();
   }
 
-  const cleanupCallbacks: (() => void)[] = [
+  const _cleanupCallbacks: (() => void)[] = [
     emptyMode.subscribe(($emptyMode) => {
       _emptyMode = $emptyMode;
     }),
   ];
   if (open.unsubscribe) {
-    cleanupCallbacks.push(open.unsubscribe);
+    _cleanupCallbacks.push(open.unsubscribe);
   }
 
-  // function registerDefaultListeners() {
-  // 	cleanupCallbacks = [bindShortcut('ctrl+shift+p,ctrl+p', togglePalette)];
-  // 	return () => {
-  // 		for (const unsubscribe of cleanupCallbacks) {
-  // 			unsubscribe();
-  // 		}
-  // 	};
-  // }
+  const commandShortcutsCleanup: Map<CommandID, (() => void)[]> = new Map();
 
   function clearInput() {
     if (_inputElement) {
@@ -183,12 +177,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     searchFn($inputText);
   }
 
-  /**
-   *
-   * @param {import('./types.js').Command} command
-   * @returns
-   */
-  function executeCommand(command: Command) {
+  function executeCommand(command: Command, source: CommandExecutionSource) {
     if (!command) {
       log?.('warn', 'No command provided to executeCommand');
       return;
@@ -200,7 +189,11 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     });
 
     try {
-      command.action({} as any);
+      command.action({
+        event: new Event('command-execution'),
+        hcState: undefined,
+        source,
+      });
       error.update(($error) => {
         $error = undefined;
         return $error;
@@ -243,7 +236,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       return $element;
     });
 
-    executeCommand(command);
+    executeCommand(command, { type: 'click', event });
 
     closePalette();
   }
@@ -272,6 +265,38 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     };
   }
 
+  function registerCommandShortcuts(command: Command) {
+    const shortcuts = command.shortcut;
+    if (!shortcuts || shortcuts.length === 0) {
+      return;
+    }
+
+    const cleanupShortcuts: (() => void)[] = [];
+    for (const shortcut of shortcuts) {
+      const cleanup = addKeyBinding(window, shortcut, (event) => {
+        event.preventDefault();
+        executeCommand(command, { type: 'shortcut', shortcut });
+      });
+      if (cleanup) {
+        cleanupShortcuts.push(cleanup);
+      }
+    }
+
+    commandShortcutsCleanup.set(command.id, cleanupShortcuts);
+  }
+
+  function cleanupCommandShortcuts(command: Command) {
+    const cleanupCallbacks = commandShortcutsCleanup.get(command.id);
+    if (!cleanupCallbacks) {
+      return;
+    }
+
+    for (const cleanup of cleanupCallbacks) {
+      cleanup();
+    }
+    commandShortcutsCleanup.delete(command.id);
+  }
+
   function registerCommand<T extends CommandDefinition | Command | Command[] | CommandDefinition[]>(
     command: T,
     override: boolean = false,
@@ -291,6 +316,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         if (existingIndex < 0) {
           newCommands.push(newCommand);
           $commands.push(newCommand);
+          registerCommandShortcuts(newCommand);
           continue;
         }
 
@@ -302,7 +328,9 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
         newCommands.push(newCommand);
         const [oldCommand] = $commands.splice(existingIndex, 1, newCommand);
+        registerCommandShortcuts(newCommand);
 
+        cleanupCommandShortcuts(oldCommand);
         oldCommand.unregisterCallback?.({ command: oldCommand, hcState: undefined });
         removedCommands.push(oldCommand);
       }
@@ -337,7 +365,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
           }
 
           const [oldCommand] = $commands.splice(index, 1);
-
+          cleanupCommandShortcuts(oldCommand);
           oldCommand.unregisterCallback?.({ command: oldCommand, hcState: undefined });
           const idx = _results.findIndex((result) => result.command.id === oldCommand.id);
           if (idx >= 0) {
@@ -353,6 +381,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
         return $commands;
       });
+
+      updateResults(true);
     };
   }
 
@@ -483,6 +513,32 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     });
   }
 
+  function registerDefaultShortcuts() {
+    const cleanupShortcuts: (() => void)[] = [];
+    const cleanupOpenPalette1 = addKeyBinding(window, '$mod+Shift+P', shortCutOpenPalette);
+    const cleanupOpenPalette2 = addKeyBinding(window, '$mod+P', shortCutOpenPalette);
+    if (cleanupOpenPalette1) {
+      cleanupShortcuts.push(cleanupOpenPalette1);
+    }
+    if (cleanupOpenPalette2) {
+      cleanupShortcuts.push(cleanupOpenPalette2);
+    }
+
+    commandShortcutsCleanup.set('default', cleanupShortcuts);
+  }
+
+  function cleanupDefaultsShorcuts() {
+    const cleanupCallbacks = commandShortcutsCleanup.get('default');
+    if (!cleanupCallbacks) {
+      return;
+    }
+
+    for (const cleanup of cleanupCallbacks) {
+      cleanup();
+    }
+    commandShortcutsCleanup.delete('default');
+  }
+
   const commandPalette = builder(dataName(), {
     stores: [],
     returned: () => {
@@ -491,20 +547,10 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       };
     },
     action: (node) => {
-      // const cleanupDefaults = registerDefaultListeners();
-      const cleanupOpenPalette1 = addKeyBinding(window, '$mod+Shift+P', shortCutOpenPalette);
-      const cleanupOpenPalette2 = addKeyBinding(window, '$mod+P', shortCutOpenPalette);
-      if (cleanupOpenPalette1) {
-        cleanupCallbacks.push(cleanupOpenPalette1);
-      }if (cleanupOpenPalette2) {
-        cleanupCallbacks.push(cleanupOpenPalette2);
-      }
+      registerDefaultShortcuts();
       return {
         destroy() {
-          // cleanupDefaults();
-          for (const cleanup of cleanupCallbacks) {
-            cleanup();
-          }
+          cleanupDefaultsShorcuts();
         },
       };
     },
@@ -550,7 +596,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
           });
         }
 
-        executeCommand(command);
+        executeCommand(command, { type: 'command-palette'});
       }
 
       node.addEventListener('submit', onSubmit);
@@ -644,7 +690,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
           return $element;
         });
 
-        executeCommand(command);
+        executeCommand(command, { type: 'click', event });
       }
       node.addEventListener('click', onClick);
 
@@ -692,6 +738,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       openPalette,
       closePalette,
       togglePalette,
+      registerDefaultShortcuts
     },
   };
 }

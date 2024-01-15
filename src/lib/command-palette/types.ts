@@ -34,9 +34,20 @@ export type HCState = undefined | Writable<any>;
 
 export type CommandID = string;
 
+export type CommandExecutionSource = {
+  type: 'command-palette'
+} | {
+  type: 'shortcut';
+  shortcut: string;
+} | {
+  type: 'click';
+  event: MouseEvent;
+};
+
 export type CommandActionArgs = {
   event: Event;
   hcState: HCState;
+  source: CommandExecutionSource;
 };
 
 export type CommandAction = (args: CommandActionArgs) => void | Promise<void>;
@@ -50,6 +61,7 @@ export type CommandDefinition = {
   description?: string;
   keywords?: string[];
   category?: string;
+  shortcut?: string | string[];
   action?: CommandAction;
   unregisterCallback?: CommandUnregisterCallback;
 };
@@ -62,6 +74,7 @@ export type Command = {
   category: string;
   action: CommandAction;
   unregisterCallback?: CommandUnregisterCallback;
+  shortcut?: string[];
 };
 
 export type CommandElementAction = Action<HTMLElement, Command>;

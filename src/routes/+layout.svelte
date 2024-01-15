@@ -1,9 +1,10 @@
 <script>
   import { defineCommands } from '$lib/command-palette/helpers';
   import CommandPalette from '$lib/default/CommandPalette.svelte';
-  import { removeAllKeyBindings } from '../../.ignored/custom_tinykeys';
+  import { removeAllKeyBindings } from '$lib/keyboard/keystroke';
   import { onMount } from 'svelte';
   import '../app.css';
+  import {methods} from '$lib/default/CommandPalette.svelte';
 
   /** @type {import('$lib/command-palette/types').Command[]}*/
   let commands = [];
@@ -16,7 +17,7 @@
         description: 'Open the command palette',
         action: () => {
           console.log('Open command palette');
-        },
+        }
       },
       {
         id: 'open-dialog',
@@ -28,6 +29,7 @@
       },
     ]);
     removeAllKeyBindings(window);
+    methods.registerDefaultShortcuts();
   });
 </script>
 

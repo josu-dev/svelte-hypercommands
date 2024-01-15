@@ -13,6 +13,7 @@ export function normalizeCommand(command: CommandDefinition): Command {
     category: command.category ?? '',
     action: command.action ?? noopCommandAction,
     unregisterCallback: command.unregisterCallback,
+    shortcut: Array.isArray(command.shortcut) ? command.shortcut : command.shortcut ? [command.shortcut] : [],
   };
 }
 

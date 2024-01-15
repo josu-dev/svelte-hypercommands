@@ -5,16 +5,17 @@
 
   const command = defineCommands([
     {
-      id: 'dynamic-command',
-      name: 'Home Dynamic Command',
+      id: 'dynamic-command-1',
+      name: 'Test Dynamic Command',
       description: 'This command was dynamically added to the command palette',
-      action: () => {
-        console.log('Dynamic command was executed');
+      action: ({ source }) => {
+        console.log('Dynamic command was executed', source);
       },
+      shortcut: '$mod+Shift+E',
     },
     {
-      id: 'alert-command',
-      name: 'Home Alert Command',
+      id: 'dynamic-command-2',
+      name: 'Test Alert Command',
       description: 'This command will alert you',
       action: () => {
         alert('Alert command was executed');
@@ -40,7 +41,7 @@
 <main>
   <h1>open: {$open}</h1>
 
-  <p><a href="/test">Test</a></p>
+  <p><a href="/">Home</a></p>
 
   <button on:click={registerCommand}> Register Command </button>
   <button on:click={() => unregisterCommands?.()}> Unregister Command </button>
