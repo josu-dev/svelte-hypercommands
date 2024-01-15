@@ -21,7 +21,7 @@ export type ItemToSearchableText<T extends AnyRecord> = (item: T) => string;
  * @param text The text to translate.
  * @returns The source text translated to characters in the range of 0x21 to 0x7E (`!` to `~`).
  */
-function translateToBasicASCII(text: string): string {
+function translateToSafeASCII(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
@@ -38,7 +38,7 @@ export function generateSearchableItems<
     result.push({
       item,
       AID: offset + i,
-      searchableText: translateToBasicASCII(mapper(item)),
+      searchableText: translateToSafeASCII(mapper(item)),
     } as S);
   }
 
@@ -105,7 +105,7 @@ export class Searcher<
       this.#items.push({
         item,
         AID: this.#sourceItems.length - 1,
-        searchableText: translateToBasicASCII(this.#mapper(item)),
+        searchableText: translateToSafeASCII(this.#mapper(item)),
       } as T);
     }
 
@@ -133,7 +133,7 @@ export class Searcher<
 
   search(query: string): TSource[] {
     this.#sourceQuery = query;
-    const searchText = translateToBasicASCII(query);
+    const searchText = translateToSafeASCII(query);
     this.#query = searchText;
 
     this.#itemsFiltered.length = 0;
@@ -172,7 +172,7 @@ export class Searcher<
   }
 
   sideEffectFreeSearch(query: string): TSource[] {
-    const searchText = translateToBasicASCII(query);
+    const searchText = translateToSafeASCII(query);
     const filteredItems: T[] = [];
     const filteredSourceItems: TSource[] = [];
 

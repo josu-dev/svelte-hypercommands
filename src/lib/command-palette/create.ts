@@ -1,4 +1,4 @@
-import { addKeyBinding } from '$lib/keyboard';
+import { addKeyBinding, removeKeyBinding } from '$lib/keyboard';
 import { Searcher } from '$lib/search';
 import { log, randomID } from '$lib/utils/funcs';
 import { addValueAccessor, writableWithValue, writablesFromRecord } from '$lib/utils/stores';
@@ -114,7 +114,18 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         $open = false;
         return $open;
       });
+      _inputElement?.blur();
     }
+  }
+
+  function registerEscKey() {
+    addKeyBinding(window, 'Escape', () => {
+      closePalette();
+    });
+  }
+
+  function cleanupEscKey() {
+    removeKeyBinding(window, 'Escape');
   }
 
   function shortCutOpenPalette(event: KeyboardEvent) {
@@ -124,6 +135,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         $open = true;
         return $open;
       });
+      registerEscKey();
     }
     _inputElement?.focus();
   }
@@ -528,6 +540,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
   }
 
   function cleanupDefaultsShorcuts() {
+    cleanupEscKey();
     const cleanupCallbacks = commandShortcutsCleanup.get('default');
     if (!cleanupCallbacks) {
       return;
