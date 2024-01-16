@@ -1,9 +1,9 @@
 <script>
-  import { defineCommands } from '$lib/command-palette/helpers';
-  import { methods, states } from '$lib/default/CommandPalette.svelte';
+  import { defineCommand } from '$lib/command-palette/helpers';
+  import { helpers, states } from '$lib/default/CommandPalette.svelte';
   import { onDestroy } from 'svelte';
 
-  const command = defineCommands([
+  const command = defineCommand([
     {
       id: 'dynamic-command-1',
       name: 'Test Dynamic Command',
@@ -28,7 +28,7 @@
 
   function registerCommand() {
     unregisterCommands?.();
-    unregisterCommands = methods.registerCommand(command);
+    unregisterCommands = helpers.registerCommand(command);
   }
 
   onDestroy(() => {

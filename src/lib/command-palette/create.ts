@@ -1,7 +1,9 @@
 import { addKeyBinding, removeKeyBinding } from '$lib/keyboard';
 import { Searcher } from '$lib/search';
+import { useClickOutside, usePortal } from '$lib/utils/actions';
 import { log, randomID } from '$lib/utils/funcs';
 import { addValueAccessor, writableWithValue, writablesFromRecord } from '$lib/utils/stores';
+import { tick } from 'svelte';
 import { get, type Writable } from 'svelte/store';
 import { builder } from './builder';
 import { DuplicatedIDError } from './errors';
@@ -34,6 +36,7 @@ const defaults = {
   selectedIdx: undefined,
   selectedId: undefined,
   emptyMode: 'all' as EmptyModes,
+  portal: false as const,
 };
 
 const screenReaderStyles = `
@@ -50,7 +53,7 @@ const screenReaderStyles = `
 
 export function createCommandPalette(options: CreateCommandPaletteOptions = {}) {
   const defaultOpen = options?.defaultOpen ?? defaults.defaultOpen;
-  const open: Writable<boolean> & { unsubscribe?(): void; get value(): boolean } = options?.open
+  const open: Writable<boolean> & { unsubscribe?(): void; get value(): boolean; } = options?.open
     ? addValueAccessor(options.open)
     : writableWithValue(defaultOpen);
 
@@ -68,6 +71,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     emptyMode,
     selectedId,
     selectedIdx,
+    portal: portalTarget,
   } = _options;
 
   const ids = {
@@ -110,11 +114,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
   function closePalette() {
     if (open.value) {
-      open.update(($open) => {
-        $open = false;
-        return $open;
-      });
-      _inputElement?.blur();
+      open.set(false);
     }
   }
 
@@ -137,7 +137,10 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       });
       registerEscKey();
     }
-    _inputElement?.focus();
+
+    tick().then(() => {
+      _inputElement?.focus();
+    });
   }
 
   const _cleanupCallbacks: (() => void)[] = [
@@ -202,6 +205,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
     try {
       command.action({
+        command,
         event: new Event('command-execution'),
         hcState: undefined,
         source,
@@ -233,7 +237,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     closePalette();
   }
 
-  function commandClick(event: MouseEvent & { currentTarget: HTMLElement }) {
+  function commandClick(event: MouseEvent & { currentTarget: HTMLElement; }) {
     event.preventDefault();
     const el = event.currentTarget;
     const id = el.dataset['commandId'];
@@ -552,7 +556,30 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     commandShortcutsCleanup.delete('default');
   }
 
-  const commandPalette = builder(dataName(), {
+  // Elements Builders
+
+  const builderPortal = builder(dataName(), {
+    stores: [portalTarget],
+    returned: ([$target]) => {
+      return {
+        'data-portal': $target ? '' : undefined,
+      };
+    },
+    action: (node) => {
+      const actionCleanup = usePortal(node, get(portalTarget));
+
+      const unsubscribe = portalTarget.subscribe(actionCleanup.update);
+
+      return {
+        destroy() {
+          actionCleanup.destroy();
+          unsubscribe();
+        },
+      };
+    },
+  });
+
+  const builderPalette = builder(dataName(), {
     stores: [],
     returned: () => {
       return {
@@ -561,26 +588,24 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     },
     action: (node) => {
       registerDefaultShortcuts();
+
+      const cleanupClickOutside = useClickOutside(node, {
+        type: "pointerdown",
+        handler: (event) => {
+          closePalette();
+        },
+      });
+
       return {
         destroy() {
           cleanupDefaultsShorcuts();
+          cleanupClickOutside.destroy();
         },
       };
     },
   });
 
-  const label = builder(dataName('label'), {
-    stores: [],
-    returned: () => {
-      return {
-        id: ids.label,
-        for: ids.searchInput,
-        style: screenReaderStyles,
-      };
-    },
-  });
-
-  const form = builder(dataName('search-form'), {
+  const builderForm = builder(dataName('search-form'), {
     stores: [],
     returned: () => {
       return {
@@ -609,7 +634,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
           });
         }
 
-        executeCommand(command, { type: 'command-palette'});
+        executeCommand(command, { type: 'command-palette' });
       }
 
       node.addEventListener('submit', onSubmit);
@@ -622,7 +647,18 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     },
   });
 
-  const input = builder(dataName('search-input'), {
+  const builderLabel = builder(dataName('label'), {
+    stores: [],
+    returned: () => {
+      return {
+        id: ids.label,
+        for: ids.searchInput,
+        style: screenReaderStyles,
+      };
+    },
+  });
+
+  const builderInput = builder(dataName('search-input'), {
     stores: [],
     returned: () => {
       return {
@@ -675,7 +711,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     },
   });
 
-  const result = builder(dataName('result'), {
+  const builderResult = builder(dataName('result'), {
     stores: [],
     returned: () => {
       return {
@@ -728,11 +764,12 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
   return {
     elements: {
-      commandPalette: commandPalette,
-      label: label,
-      form: form,
-      input: input,
-      result: result,
+      portal: builderPortal,
+      palette: builderPalette,
+      form: builderForm,
+      label: builderLabel,
+      input: builderInput,
+      result: builderResult
     },
     states: {
       commands,
@@ -742,9 +779,9 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       currentCommand,
       error,
       open,
+      portalTarget,
     },
-    options,
-    methods: {
+    helpers: {
       registerCommand,
       unregisterCommand,
       search: searchFn,

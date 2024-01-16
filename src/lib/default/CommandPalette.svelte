@@ -1,14 +1,17 @@
 <script context="module">
   import { createCommandPalette } from '$lib/command-palette/create';
+  import { removeAllKeyBindings } from '$lib/keyboard/keystroke';
+  import { isBrowser } from '$lib/utils/funcs';
+
   const state = createCommandPalette();
 
   export const elements = state.elements;
   export const states = state.states;
-  export const methods = state.methods;
+  export const helpers = state.helpers;
 </script>
 
 <script>
-  import { onDestroy } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
 
   /**
    * @type {import('$lib/command-palette/types').Command[]}
@@ -17,44 +20,67 @@
   export let placeholder = 'Search for commands...';
   export let a11yInputLabel = 'Command Palette Search';
 
-  const { commandPalette, label, input, form, result } = elements;
-  const { results } = states;
+  const { portal, palette, form, label, input, result } = elements;
+  const { open, results } = states;
 
   /** @type {() => void}*/
   let unregisterCommands;
 
-  $: {
+  $: if (isBrowser) {
     unregisterCommands?.();
-    unregisterCommands = methods.registerCommand(commands);
+    unregisterCommands = helpers.registerCommand(commands);
   }
 
+  onMount(() => {
+    if (isBrowser) {
+      removeAllKeyBindings(window);
+      helpers.registerDefaultShortcuts();
+    }
+  });
+
   onDestroy(() => {
-    unregisterCommands?.();
+    if (isBrowser) {
+      unregisterCommands?.();
+    }
   });
 </script>
 
-<div {...$commandPalette} use:commandPalette class="palette-container">
-  <form {...$form} use:form class="palette-search">
-    <!-- svelte-ignore a11y-label-has-associated-control -->
-    <label {...$label} use:label>{a11yInputLabel}</label>
-    <input {...$input} use:input {placeholder} class="search-input" />
-  </form>
-  <div class="palette-results">
-    {#each $results as command (command.id)}
-      <div class="command" {...$result} use:result={command}>
-        <div class="command-name">{command.name}</div>
-        <div class="command-description">{command.description}</div>
+<div class="palette-portal" use:portal hidden>
+  {#if $open}
+    <div {...$palette} use:palette class="palette-container">
+      <form {...$form} use:form class="palette-search">
+        <!-- svelte-ignore a11y-label-has-associated-control - $label has the missing for attribute -->
+        <label {...$label} use:label>{a11yInputLabel}</label>
+        <input {...$input} use:input {placeholder} class="search-input" />
+      </form>
+      <div class="palette-results">
+        {#each $results as command (command.id)}
+          <div class="command" {...$result} use:result={command}>
+            <div class="command-name">{command.name}</div>
+            <div class="command-description">{command.description}</div>
+          </div>
+        {/each}
       </div>
-    {/each}
-  </div>
+    </div>
+  {/if}
 </div>
 
 <style>
+  /* .palette-portal {
+    display: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  } */
+
   .palette-container {
+    position: fixed;
+    top: 10vh;
+    left: 50%;
+    right: 50%;
+    transform: translate(-50%, 0);
     display: flex;
     flex-direction: column;
-    margin-top: 10vh;
-    margin-inline: auto;
     width: 90vw;
     max-width: 640px;
     max-height: 80vh;
@@ -62,15 +88,15 @@
     color: white;
     border-style: solid;
     border-width: 1px;
-    border-color: rgb(113 113 122 / 0.25);
+    border-color: rgb(48, 48, 54);
     border-radius: 0.25rem;
-    background-color: rgb(24 24 27);
+    background-color: #1f1f1f;
     overflow-y: hidden;
     font-size: 1rem;
+    box-shadow: 0px 0px 10px 2px rgba(0, 0, 0, 0.25);
   }
   @media (min-width: 640px) {
     .palette-container {
-      margin-top: 10vh;
       width: 80vw;
     }
   }
@@ -139,7 +165,7 @@
 
   .command:hover {
     opacity: 1;
-    background-color: rgb(8 51 68 / 0.4);
+    background-color: rgba(72 72 81 / 0.2);
   }
   .command[data-selected] {
     opacity: 1;

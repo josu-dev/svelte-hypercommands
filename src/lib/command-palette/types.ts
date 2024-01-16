@@ -2,7 +2,7 @@ import type { RecordToWritables } from '$lib/utils/types';
 import type { Action } from 'svelte/action';
 import type { Writable } from 'svelte/store';
 
-export type ChangeFn<T> = (args: { curr: T; next: T }) => T;
+export type ChangeFn<T> = (args: { curr: T; next: T; }) => T;
 
 export type CreateCommandPaletteOptions = {
   defaultOpen?: boolean;
@@ -16,13 +16,14 @@ export type CreateCommandPaletteOptions = {
   currentCommand?: Command | undefined;
   element?: HTMLElement | undefined;
   error?:
-    | {
-        error: unknown;
-        command: Command;
-      }
-    | undefined;
+  | {
+    error: unknown;
+    command: Command;
+  }
+  | undefined;
   inputText?: string;
   emptyMode?: 'all' | 'none' | 'history';
+  portal?: HTMLElement | string | false | undefined;
 };
 
 // export type CommandPalette = BuilderReturn<typeof createCommandPalette>;
@@ -35,7 +36,7 @@ export type HCState = undefined | Writable<any>;
 export type CommandID = string;
 
 export type CommandExecutionSource = {
-  type: 'command-palette'
+  type: 'command-palette';
 } | {
   type: 'shortcut';
   shortcut: string;
@@ -45,14 +46,15 @@ export type CommandExecutionSource = {
 };
 
 export type CommandActionArgs = {
-  event: Event;
+  command: Command;
   hcState: HCState;
+  event: Event;
   source: CommandExecutionSource;
 };
 
 export type CommandAction = (args: CommandActionArgs) => void | Promise<void>;
 
-export type CommandUnregisterCallbackArgs = { command: Command; hcState: HCState };
+export type CommandUnregisterCallbackArgs = { command: Command; hcState: HCState; };
 export type CommandUnregisterCallback = (arg: CommandUnregisterCallbackArgs) => void;
 
 export type CommandDefinition = {
@@ -91,7 +93,7 @@ export type CommandPaletteState = {
   selectedIdx?: number;
   currentCommand?: Command;
   element?: HTMLElement;
-  error?: { error: Error; command: Command };
+  error?: { error: Error; command: Command; };
   inputText: string;
   open: boolean;
 };

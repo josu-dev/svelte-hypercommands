@@ -1,9 +1,9 @@
 <script>
-  import { defineCommands } from '$lib/command-palette/helpers';
-  import { methods, states } from '$lib/default/CommandPalette.svelte';
+  import { defineCommand } from '$lib/command-palette/helpers';
+  import { helpers, states } from '$lib/default/CommandPalette.svelte';
   import { onDestroy } from 'svelte';
 
-  const command = defineCommands([
+  const command = defineCommand([
     {
       id: 'dynamic-command',
       name: 'Home Dynamic Command',
@@ -20,6 +20,16 @@
         alert('Alert command was executed');
       },
     },
+    {
+      id: 'alert-command3',
+      name: 'Home Alert Command',
+      description: 'This command will alert you',
+      action: () => {
+        navigator.clipboard.writeText(window.location.href);
+        alert('Copied URL to clipboard');
+      },
+      shortcut: '$mod+Y',
+    },
   ]);
 
   /** @type {() => void}*/
@@ -27,7 +37,7 @@
 
   function registerCommand() {
     unregisterCommands?.();
-    unregisterCommands = methods.registerCommand(command);
+    unregisterCommands = helpers.registerCommand(command);
   }
 
   onDestroy(() => {
