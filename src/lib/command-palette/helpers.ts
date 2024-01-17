@@ -1,12 +1,17 @@
-import { goto } from '$app/navigation';
 import { randomID } from '$lib/utils/funcs';
 import type { OneOrMany } from '$lib/utils/types';
-import type { Command, CommandDefinition } from './types';
+import type { HCommandDefinition, HyperCommand, HyperPage, HyperPageDefinition } from './types';
+
+
+export function isHTMLElement(el: unknown): el is HTMLElement {
+  return el instanceof HTMLElement;
+}
 
 export function noopCommandAction(): void { }
 
-export function normalizeCommand(command: CommandDefinition): Command {
+export function normalizeCommand(command: HCommandDefinition): HyperCommand {
   return {
+    type: 'command',
     id: command.id ?? randomID(),
     name: command.name,
     description: command.description ?? '',
@@ -18,7 +23,7 @@ export function normalizeCommand(command: CommandDefinition): Command {
   };
 }
 
-export function defineCommand(commands: OneOrMany<CommandDefinition>): Command[] {
+export function defineCommand(commands: OneOrMany<HCommandDefinition>): HyperCommand[] {
   commands = Array.isArray(commands) ? commands : [commands];
 
   const normalizedCommands = [];
@@ -27,6 +32,29 @@ export function defineCommand(commands: OneOrMany<CommandDefinition>): Command[]
   }
 
   return normalizedCommands;
+}
+
+
+export function normalizePage(page: HyperPageDefinition): HyperPage {
+  return {
+    type: 'page',
+    id: page.url,
+    name: page.name,
+    description: page.description ?? '',
+    url: page.url,
+    external: !page.url.startsWith('/')
+  };
+}
+
+export function definePage(pages: OneOrMany<HyperPageDefinition>): HyperPage[] {
+  pages = Array.isArray(pages) ? pages : [pages];
+
+  const normalizedPage = [];
+  for (const page of pages) {
+    normalizedPage.push(normalizePage(page));
+  }
+
+  return normalizedPage;
 }
 
 export function getAllRoutes(parem: string) {
@@ -39,22 +67,16 @@ export function getAllRoutes(parem: string) {
   return routes;
 }
 
-export function routesCommands() {
-  const routes = getAllRoutes('');
-  const commands = [];
-  for (const route of routes) {
-    commands.push({
-      name: route.name,
-      description: `Go to ${route.name} page`,
-      keywords: [route.name, 'page'],
-      action: () => {
-        goto(route.name);
-      },
-    });
+export function projectRoutesAsPages() {
+  const modules = import.meta.glob('/src/**/+page.svelte');
+  const pages: HyperPage[] = [];
+  for (const path in modules) {
+    const name = path.slice(11, path.length > 24 ? -13 : -12);
+    pages.push(normalizePage({
+      name: name,
+      url: name,
+      description: `Local route: ${name}`
+    }));
   }
-  return commands;
-}
-
-export function isHTMLElement(el: unknown): el is HTMLElement {
-  return el instanceof HTMLElement;
+  return pages;
 }

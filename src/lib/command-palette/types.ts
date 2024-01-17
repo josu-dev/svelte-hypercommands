@@ -8,28 +8,29 @@ export type CreateCommandPaletteOptions = {
   defaultOpen?: boolean;
   open?: Writable<boolean>;
   onOpenChange?: ChangeFn<boolean>;
-  commands?: Command[];
-  results?: Command[];
+  commands?: HyperCommand[];
   history?: CommandID[];
   selectedIdx?: number | undefined;
   selectedId?: CommandID;
-  currentCommand?: Command | undefined;
   element?: HTMLElement | undefined;
   error?:
   | {
     error: unknown;
-    command: Command;
+    command: HyperCommand;
   }
   | undefined;
   inputText?: string;
   emptyMode?: 'all' | 'none' | 'history';
   portal?: HTMLElement | string | false | undefined;
+  pages?: HyperPage[];
 };
 
 // export type CommandPalette = BuilderReturn<typeof createCommandPalette>;
 // export type CommandPaletteElements = CommandPalette['elements'];
 // export type CommandPaletteOptions = CommandPalette['options'];
 // export type CommandPaletteStates = CommandPalette['states'];
+
+export type PaletteMode = "PAGES" | "COMMANDS";
 
 export type HCState = undefined | Writable<any>;
 
@@ -46,7 +47,7 @@ export type CommandExecutionSource = {
 };
 
 export type CommandActionArgs = {
-  command: Command;
+  command: HyperCommand;
   hcState: HCState;
   event: Event;
   source: CommandExecutionSource;
@@ -54,10 +55,10 @@ export type CommandActionArgs = {
 
 export type CommandAction = (args: CommandActionArgs) => void | Promise<void>;
 
-export type CommandUnregisterCallbackArgs = { command: Command; hcState: HCState; };
+export type CommandUnregisterCallbackArgs = { command: HyperCommand; hcState: HCState; };
 export type CommandUnregisterCallback = (arg: CommandUnregisterCallbackArgs) => void;
 
-export type CommandDefinition = {
+export type HCommandDefinition = {
   id?: CommandID;
   name: string;
   description?: string;
@@ -68,7 +69,8 @@ export type CommandDefinition = {
   unregisterCallback?: CommandUnregisterCallback;
 };
 
-export type Command = {
+export type HyperCommand = {
+  type: 'command';
   id: CommandID;
   name: string;
   description: string;
@@ -79,35 +81,52 @@ export type Command = {
   shortcut?: string[];
 };
 
-export type CommandElementAction = Action<HTMLElement, Command>;
+export type HyperPageDefinition = {
+  name: string;
+  description?: string;
+  url: string;
+};
 
-export type InternalCommand = {
-  command: Command;
-  action: CommandElementAction;
+export type HyperPage = {
+  type: 'page';
+  id: string;
+  name: string;
+  description: string;
+  url: string;
+  external: boolean;
+};
+
+export type HyperItems = HyperCommand | HyperPage;
+
+export type HyperElementAction<T extends HyperItems> = Action<HTMLElement, T>;
+
+export type InternalItem<T extends HyperItems> = {
+  item: T;
+  action: HyperElementAction<T>;
 };
 
 export type CommandPaletteState = {
-  commands: Command[];
-  results: Command[];
+  commands: HyperCommand[];
+  results: HyperCommand[];
   history: CommandID[];
   selectedIdx?: number;
-  currentCommand?: Command;
+  currentCommand?: HyperCommand;
   element?: HTMLElement;
-  error?: { error: Error; command: Command; };
+  error?: { error: Error; command: HyperCommand; };
   inputText: string;
   open: boolean;
 };
 
 export type CommandPaletteStateStores = RecordToWritables<CommandPaletteState>;
 
-export type CommandMatcher = CommandID | Command | ((command: Command) => boolean);
+export type CommandMatcher = CommandID | HyperCommand | ((command: HyperCommand) => boolean);
 
 export type UnregisterCommand = (id: CommandID) => void;
 
 export type UnregisterCallback = () => void;
 
 export type RegisterCommand = <
-  T extends CommandDefinition | Command | Command[] | CommandDefinition[],
+  T extends HCommandDefinition | HyperCommand | HyperCommand[] | HCommandDefinition[],
 >(
   command: T,
   override?: boolean,

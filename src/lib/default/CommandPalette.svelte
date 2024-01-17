@@ -14,25 +14,37 @@
   import { onDestroy, onMount } from 'svelte';
 
   /**
-   * @type {import('$lib/command-palette/types').Command[]}
+   * @type {import('$lib/command-palette/types').HyperCommand[]}
    */
   export let commands = [];
+  /**
+   * @type {import('$lib/command-palette/types').HyperPage[]}
+   */
+  export let pages = [];
   export let placeholder = 'Search for commands...';
   export let a11yInputLabel = 'Command Palette Search';
 
-  const { portal, palette, form, label, input, result } = elements;
-  const { open, results } = states;
+  const { portal, palette, form, label, input, page, command } = elements;
+  const { open, paletteMode, matchingCommands, matchingPages } = states;
 
   /** @type {() => void}*/
   let unregisterCommands;
+  /** @type {() => void}*/
+  let unregisterPages;
 
   $: if (isBrowser) {
     unregisterCommands?.();
     unregisterCommands = helpers.registerCommand(commands);
   }
+  $: if (isBrowser) {
+    unregisterPages?.();
+    unregisterPages = helpers.registerPage(pages);
+  }
 
   onMount(() => {
     if (isBrowser) {
+      // TODO: This should be done in a better way?
+      // ensure that all keybindings are removed (in case of hot reload)
       removeAllKeyBindings(window);
       helpers.registerDefaultShortcuts();
     }
@@ -41,6 +53,7 @@
   onDestroy(() => {
     if (isBrowser) {
       unregisterCommands?.();
+      unregisterPages?.();
     }
   });
 </script>
@@ -53,14 +66,33 @@
         <label {...$label} use:label>{a11yInputLabel}</label>
         <input {...$input} use:input {placeholder} class="search-input" />
       </form>
-      <div class="palette-results">
-        {#each $results as command (command.id)}
-          <div class="command" {...$result} use:result={command}>
-            <div class="command-name">{command.name}</div>
-            <div class="command-description">{command.description}</div>
-          </div>
-        {/each}
-      </div>
+      <ul class="palette-results">
+        {#if $paletteMode === 'PAGES'}
+          {#each $matchingPages as p (p.id)}
+            <li class="command" {...$page} use:page={p}>
+              <div class="command-name">{p.name}</div>
+              <div class="command-description">{p.description}</div>
+            </li>
+          {/each}
+          {#if $matchingPages.length === 0}
+            <li class="command">
+              <div class="command-name">No pages found</div>
+            </li>
+          {/if}
+        {:else}
+          {#each $matchingCommands as c (c.id)}
+            <li class="command" {...$command} use:command={c}>
+              <div class="command-name">{c.name}</div>
+              <div class="command-description">{c.description}</div>
+            </li>
+          {/each}
+          {#if $matchingCommands.length === 0}
+            <li class="command">
+              <div class="command-name">No commands found</div>
+            </li>
+          {/if}
+        {/if}
+      </ul>
     </div>
   {/if}
 </div>
@@ -142,6 +174,8 @@
   }
 
   .palette-results {
+    padding: 0;
+    margin-top: 0;
     margin-bottom: 0.75rem;
     overflow-y: auto;
   }
@@ -149,6 +183,10 @@
     .palette-results {
       max-height: 40vh;
     }
+  }
+
+  .palette-results > * {
+    list-style: none;
   }
 
   .command {

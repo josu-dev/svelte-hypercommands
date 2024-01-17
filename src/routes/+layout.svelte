@@ -1,9 +1,9 @@
 <script>
-  import { defineCommand } from '$lib/command-palette/helpers';
+  import { defineCommand, definePage, projectRoutesAsPages } from '$lib/command-palette/helpers';
   import CommandPalette from '$lib/default/CommandPalette.svelte';
   import '../app.css';
 
-  /** @type {import('$lib/command-palette/types').Command[]}*/
+  /** @type {import('$lib/command-palette/types').HyperCommand[]}*/
   const commands = defineCommand([
     {
       id: 'command-palette',
@@ -22,8 +22,9 @@
       },
     }
   ]);
+  const pages = projectRoutesAsPages();
 </script>
 
-<CommandPalette {commands} />
+<CommandPalette {commands} {pages} />
 
 <slot />
