@@ -15,7 +15,6 @@ import type {
   CommandID,
   CommandMatcher,
   CreateCommandPaletteOptions,
-  ResultsEmptyMode,
   CommandExecutionSource as ExecutionSource,
   HCommandDefinition,
   HyperCommand,
@@ -24,7 +23,8 @@ import type {
   HyperPageDefinition,
   InternalItem,
   PageMatcher,
-  PaletteMode
+  PaletteMode,
+  ResultsEmptyMode
 } from './types';
 
 function dataName(name?: string): string {
@@ -160,6 +160,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       _currentSearcher = _commandSearcher;
       _currentResults = commandResults;
       paletteMode.set(PALETTE_MODE.COMMANDS);
+      selectedIdx.set(undefined);
+      selectedId.set(undefined);
       open.set(true);
       updateResults(true);
       registerEscKey();
@@ -180,6 +182,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       _currentSearcher = _pageSearcher;
       _currentResults = pageResults;
       paletteMode.set(PALETTE_MODE.PAGES);
+      selectedIdx.set(undefined);
+      selectedId.set(undefined);
       open.set(true);
       updateResults(true);
       registerEscKey();
@@ -920,6 +924,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         }
 
         if (newInputMode !== paletteMode.value) {
+          selectedIdx.set(undefined);
+          selectedId.set(undefined);
           paletteMode.set(newInputMode);
           searchFn(query);
           return;
@@ -998,6 +1004,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         }
 
         node.dataset['selected'] = 'true';
+        node.scrollIntoView({ behavior: 'instant', 'block': 'nearest' });
       });
 
       return {
@@ -1049,6 +1056,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         }
 
         node.dataset['selected'] = 'true';
+        node.scrollIntoView({ behavior: 'instant', 'block': 'end', inline: 'nearest' });
       });
 
       return {

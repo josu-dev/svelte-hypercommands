@@ -1,5 +1,5 @@
 <script>
-  import { defineCommand, definePage, projectRoutesAsPages } from '$lib/command-palette/helpers';
+  import { defineCommand, definePage, projectRoutesAsPages as appRoutesAsPages } from '$lib/command-palette/helpers';
   import CommandPalette from '$lib/default/CommandPalette.svelte';
   import '../app.css';
 
@@ -20,9 +20,49 @@
       action: () => {
         console.log('Open dialog');
       },
-    }
+    },
+    {
+      id: 'open-snackbar',
+      name: 'Open Snackbar',
+      description: 'Open the snackbar',
+      action: () => {
+        console.log('Open snackbar');
+      },
+    },
+    {
+      id: 'open-toast',
+      name: 'Open Toast',
+      description: 'Open the toast',
+      action: () => {
+        console.log('Open toast');
+      },
+    },
+    {
+      id: 'open-menu',
+      name: 'Open Menu',
+      description: 'Open the menu',
+      action: () => {
+        console.log('Open menu');
+      },
+    },
+    {
+      id: 'open-popover',
+      name: 'Open Popover',
+      description: 'Open the popover',
+      action: () => {
+        console.log('Open popover');
+      },
+    },
+    {
+      id: 'open-tooltip',
+      name: 'Open Tooltip',
+      description: 'Open the tooltip',
+      action: () => {
+        console.log('Open tooltip');
+      },
+    },
   ]);
-  const pages = projectRoutesAsPages();
+  const pages = appRoutesAsPages();
 </script>
 
 <CommandPalette {commands} {pages} />

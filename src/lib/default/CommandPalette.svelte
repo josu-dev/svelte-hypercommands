@@ -66,26 +66,26 @@
       <ul class="palette-results">
         {#if $paletteMode === PALETTE_MODE.PAGES}
           {#each $matchingPages as p (p.id)}
-            <li class="command" {...$page} use:page={p}>
-              <div class="command-name">{p.name}</div>
-              <div class="command-description">{p.description}</div>
+            <li class="result" {...$page} use:page={p} title={p.description}>
+              <div class="result-name">{p.name}</div>
+              <div class="result-description">{p.description}</div>
             </li>
           {/each}
           {#if $matchingPages.length === 0}
-            <li class="command">
-              <div class="command-name">No pages found</div>
+            <li class="result">
+              <div class="result-name">No pages found</div>
             </li>
           {/if}
         {:else}
           {#each $matchingCommands as c (c.id)}
-            <li class="command" {...$command} use:command={c}>
-              <div class="command-name">{c.name}</div>
-              <div class="command-description">{c.description}</div>
+            <li class="result" {...$command} use:command={c}>
+              <div class="result-name">{c.name}</div>
+              <div class="result-description">{c.description}</div>
             </li>
           {/each}
           {#if $matchingCommands.length === 0}
-            <li class="command">
-              <div class="command-name">No commands found</div>
+            <li class="result">
+              <div class="result-name">No commands found</div>
             </li>
           {/if}
         {/if}
@@ -112,7 +112,7 @@
     flex-direction: column;
     width: 90vw;
     max-width: 640px;
-    max-height: 20vh;
+    max-height: 80vh;
     pointer-events: auto;
     color: white;
     border-style: solid;
@@ -132,18 +132,14 @@
 
   .palette-search {
     display: flex;
-    padding-top: 0.75rem;
-    padding-bottom: 0.75rem;
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
+    padding-block: 10px;
+    padding-inline: 8px;
   }
 
   .search-input {
     width: 100%;
-    padding-top: 0.25rem;
-    padding-left: 0.5rem;
-    padding-bottom: 0.25rem;
-    padding-right: 0.5rem;
+    padding-block: 0.25rem;
+    padding-inline: 0.5rem;
     border: none;
     border-radius: 0.125rem;
     font-size: 1rem /* 16px */;
@@ -166,14 +162,15 @@
     --tw-ring-color: rgb(0, 120, 212);
     --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width)
       var(--tw-ring-offset-color);
-    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width))
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(var(--tw-ring-offset-width))
       var(--tw-ring-color);
   }
 
   .palette-results {
     padding: 0;
-    margin-top: 0;
-    margin-bottom: 0.75rem;
+    margin: 0;
+    padding-bottom: 10px;
+    padding-inline: 8px;
     overflow-y: auto;
   }
   @media (min-width: 640px) {
@@ -182,39 +179,45 @@
     }
   }
 
-  .palette-results > * {
+  .palette-results::-webkit-scrollbar {
+    width: 10px;
+  }
+  .palette-results::-webkit-scrollbar-thumb {
+    /* width: 10px; */
+    background-color: rgba(72 72 81 / 0.5);
+  }
+
+  .palette-results > li {
     list-style: none;
   }
 
-  .command {
+  .result {
     display: flex;
     flex-direction: column;
-    padding-top: 0.5rem;
-    padding-right: 0.75rem;
-    padding-bottom: 0.5rem;
-    padding-left: 0.75rem;
+    padding-inline: 10px;
+    padding-block: 4px;
     border-radius: 0.25rem;
     opacity: 0.75;
     cursor: pointer;
   }
 
-  .command:hover {
+  .result:hover {
     opacity: 1;
     background-color: rgba(72 72 81 / 0.2);
   }
-  .command[data-selected] {
+  .result[data-selected] {
     opacity: 1;
     background-color: rgb(8 51 68 / 0.75);
   }
 
-  .command-name {
+  .result-name {
     font-weight: 500;
     color: rgb(244 244 245);
     font-size: 1rem;
     line-height: 1.5rem;
   }
 
-  .command-description {
+  .result-description {
     color: rgb(228 228 231);
     font-weight: 300;
     font-size: 0.875rem;
