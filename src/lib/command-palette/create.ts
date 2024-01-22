@@ -8,17 +8,17 @@ import type { OneOrMany } from '$lib/utils/types';
 import { tick } from 'svelte';
 import { get, type Writable } from 'svelte/store';
 import { builder } from './builder';
-import { PALETTE_MODE, RESULTS_EMPTY_MODE } from './enums';
+import { PALETTE_ITEM, PALETTE_MODE, RESULTS_EMPTY_MODE } from './enums';
 import { DuplicatedIDError } from './errors';
 import { normalizeCommand, normalizePage } from './helpers';
 import type {
-  CommandID,
   CommandMatcher,
   CreateCommandPaletteOptions,
   CommandExecutionSource as ExecutionSource,
   HCommandDefinition,
   HyperCommand,
-  HyperItems,
+  HyperId,
+  HyperItem,
   HyperPage,
   HyperPageDefinition,
   InternalItem,
@@ -27,8 +27,12 @@ import type {
   ResultsEmptyMode
 } from './types';
 
-function dataName(name?: string): string {
-  return name ? `command-palette-${name}` : 'command-palette';
+const dataKey = {
+  itemId: 'hyperItemId',
+} as const;
+
+function elementDataName(name?: string): string {
+  return name ? `palette-${name}` : 'palette';
 }
 
 const defaults = {
@@ -37,7 +41,7 @@ const defaults = {
   commands: [],
   history: [],
   inputText: '',
-  error: undefined as { error: unknown; item: HyperItems; } | undefined,
+  error: undefined as { error: unknown; item: HyperItem; } | undefined,
   currentCommand: undefined as HyperCommand | undefined,
   currentPage: undefined as HyperPage | undefined,
   element: undefined,
@@ -96,7 +100,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
   let _inputElement: HTMLInputElement | null = null;
 
-  const paletteMode = writableWithValue<PaletteMode>(PALETTE_MODE.COMMANDS);
+  const paletteMode = writableWithValue<PaletteMode>(PALETTE_MODE.PAGES);
 
   const _allCommands: InternalItem<HyperCommand>[] = [];
 
@@ -111,15 +115,15 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
   const _allPages: InternalItem<HyperPage>[] = [];
 
   const _pageSearcher = new Searcher<InternalItem<HyperPage>>({
-    mapper: (item) => item.item.name + item.item.description,
+    mapper: (item) => item.item.name + item.item.url + item.item.description,
   });
-
-  let _currentAllItems: InternalItem<HyperCommand>[] | InternalItem<HyperPage>[];
-  let _currentSearcher: Searcher<InternalItem<HyperCommand>> | Searcher<InternalItem<HyperPage>>;
-  let _currentResults: Writable<HyperCommand[] | HyperPage[]>;
 
   const commandResults = writableWithValue<HyperCommand[]>([]);
   const pageResults = writableWithValue<HyperPage[]>([]);
+
+  let _currentAllItems: InternalItem<HyperCommand>[] | InternalItem<HyperPage>[] = _allPages;
+  let _currentSearcher: Searcher<InternalItem<HyperCommand>> | Searcher<InternalItem<HyperPage>> = _pageSearcher;
+  let _currentResults: Writable<HyperCommand[] | HyperPage[]> = pageResults;
 
   function togglePalette() {
     open.update(($open) => {
@@ -144,7 +148,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
   }
 
   function registerEscKey() {
-    addKeyBinding(window, 'Escape', () => {
+    addKeyBinding(window, 'Escape', (event) => {
       closePalette();
     });
   }
@@ -203,7 +207,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     _cleanupCallbacks.push(open.unsubscribe);
   }
 
-  const commandShortcutsCleanup: Map<CommandID, (() => void)[]> = new Map();
+  const commandShortcutsCleanup: Map<HyperId, (() => void)[]> = new Map();
 
   function clearInput() {
     if (_inputElement) {
@@ -258,7 +262,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       command.action({
         command,
         event: new Event('command-execution'),
-        hcState: undefined,
+        hpState: undefined,
         source,
       });
       error.update(($error) => {
@@ -330,47 +334,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     closePalette();
   }
 
-  function commandClick(event: MouseEvent & { currentTarget: HTMLElement; }) {
-    event.preventDefault();
-    const el = event.currentTarget;
-    const id = el.dataset['commandId'];
-    const $commands = get(commands);
-    const commandIdx = $commands.findIndex((command) => command.id === id);
-    if (commandIdx < 0) {
-      return;
-    }
-    const command = $commands[commandIdx];
-    element.update(($element) => {
-      $element = event.currentTarget;
-      return $element;
-    });
-
-    executeCommand(command, { type: 'click', event });
-
-    closePalette();
-  }
-
-  function hyperItemAction(node: HTMLElement, command: HyperItems) {
-    node.addEventListener('click', commandClick as any);
-    node.dataset['command-id'] = command.id;
-    const unsunscribe = selectedId.subscribe(($selectedId) => {
-      if ($selectedId === undefined) {
-        return;
-      }
-      if ($selectedId !== command.id) {
-        delete node.dataset['selected'];
-        return;
-      }
-      node.dataset['selected'] = 'true';
-    });
-    return {
-      destroy() {
-        node.removeEventListener('click', commandClick as any);
-        unsunscribe();
-      },
-    };
-  }
-
   function registerCommandShortcuts(command: HyperCommand) {
     const shortcuts = command.shortcut;
     if (!shortcuts || shortcuts.length === 0) {
@@ -437,7 +400,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         registerCommandShortcuts(newCommand);
 
         cleanupCommandShortcuts(oldCommand);
-        oldCommand.unregisterCallback?.({ command: oldCommand, hcState: undefined });
+        oldCommand.unregisterCallback?.({ command: oldCommand, hpState: undefined });
         removedCommands.push(oldCommand);
       }
 
@@ -447,7 +410,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     for (const newCommand of newCommands) {
       const _command = {
         item: newCommand,
-        action: hyperItemAction,
+        // action: hyperItemAction,
+        action: () => { console.log('action', newCommand); },
       };
       _allCommands.push(_command);
       _commandSearcher.add(_command);
@@ -474,7 +438,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
           const [oldCommand] = $commands.splice(index, 1);
           cleanupCommandShortcuts(oldCommand);
-          oldCommand.unregisterCallback?.({ command: oldCommand, hcState: undefined });
+          oldCommand.unregisterCallback?.({ command: oldCommand, hpState: undefined });
           const idx = _allCommands.findIndex((result) => result.item.id === oldCommand.id);
           if (idx >= 0) {
             _allCommands.splice(idx, 1);
@@ -518,7 +482,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
         const [oldCommand] = $commands.splice(index, 1);
 
-        oldCommand.unregisterCallback?.({ command: oldCommand, hcState: undefined });
+        oldCommand.unregisterCallback?.({ command: oldCommand, hpState: undefined });
         removedCommands.push(oldCommand);
       }
 
@@ -575,7 +539,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     for (const newPage of newPages) {
       const _page = {
         item: newPage,
-        action: hyperItemAction,
+        // action: hyperItemAction,
+        action: () => { console.log('action', newPage); },
       };
       _allPages.push(_page);
       _pageSearcher.add(_page);
@@ -779,7 +744,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
   // Elements Builders
 
-  const builderPortal = builder(dataName(), {
+  const builderPortal = builder(elementDataName(), {
     stores: [portalTarget],
     returned: ([$target]) => {
       return {
@@ -800,7 +765,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     },
   });
 
-  const builderPalette = builder(dataName(), {
+  const builderPalette = builder(elementDataName('container'), {
     stores: [],
     returned: () => {
       return {
@@ -818,6 +783,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         },
       });
 
+
       return {
         destroy() {
           cleanupDefaultsShorcuts();
@@ -827,7 +793,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     },
   });
 
-  const builderForm = builder(dataName('search-form'), {
+  const builderForm = builder(elementDataName('search-form'), {
     stores: [],
     returned: () => {
       return {
@@ -856,12 +822,12 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
           });
         }
 
-        if (item.type === 'page') {
-          navigateToPage(item, { type: 'command-palette' });
+        if (item.type === PALETTE_ITEM.PAGE) {
+          navigateToPage(item, { type: 'keyboard' });
           return;
         }
 
-        executeCommand(item, { type: 'command-palette' });
+        executeCommand(item, { type: 'keyboard' });
       }
 
       node.addEventListener('submit', onSubmit);
@@ -874,7 +840,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     },
   });
 
-  const builderLabel = builder(dataName('label'), {
+  const builderLabel = builder(elementDataName('search-label'), {
     stores: [],
     returned: () => {
       return {
@@ -885,7 +851,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     },
   });
 
-  const builderInput = builder(dataName('search-input'), {
+  const builderInput = builder(elementDataName('search-input'), {
     stores: [],
     returned: () => {
       return {
@@ -933,8 +899,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
         clearTimeout(debounceTimeout);
         debounceTimeout = setTimeout(() => {
-          searchFn(rawValue);
-        }, 250);
+          searchFn(query);
+        }, 200);
       }
       node.addEventListener('input', onInput);
 
@@ -963,7 +929,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     },
   });
 
-  const builderPage = builder(dataName('page'), {
+  const builderPage = builder(elementDataName('page'), {
     stores: [],
     returned: () => {
       return {
@@ -977,7 +943,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         if (!el) {
           return;
         }
-        const id = el.dataset['pageId'];
+        const id = el.dataset[dataKey.itemId];
         const $pages = get(pages);
         const pageIdx = $pages.findIndex((command) => command.id === id);
         if (pageIdx < 0) {
@@ -995,7 +961,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       }
       node.addEventListener('click', onClick);
 
-      node.dataset['hcItemId'] = page.id.toString();
+      node.dataset[dataKey.itemId] = page.id.toString();
 
       const unsunscribe = selectedId.subscribe(($selectedId) => {
         if ($selectedId === undefined || $selectedId !== page.id) {
@@ -1016,7 +982,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     },
   });
 
-  const builderCommand = builder(dataName('command'), {
+  const builderCommand = builder(elementDataName('command'), {
     stores: [],
     returned: () => {
       return {
@@ -1030,7 +996,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         if (!el) {
           return;
         }
-        const id = el.dataset['commandId'];
+        const id = el.dataset[dataKey.itemId];
         const $commands = get(commands);
         const commandIdx = $commands.findIndex((command) => command.id === id);
         if (commandIdx < 0) {
@@ -1048,7 +1014,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       }
       node.addEventListener('click', onClick);
 
-      node.dataset['hcItemId'] = command.id.toString();
+      node.dataset[dataKey.itemId] = command.id.toString();
       const unsunscribe = selectedId.subscribe(($selectedId) => {
         if ($selectedId === undefined || $selectedId !== command.id) {
           delete node.dataset['selected'];

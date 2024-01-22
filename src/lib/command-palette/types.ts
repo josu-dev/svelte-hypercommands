@@ -1,6 +1,12 @@
-import type { RecordToWritables } from '$lib/utils/types';
+import type { RecordToWritables } from '$lib/utils/types.js';
 import type { Action } from 'svelte/action';
 import type { Writable } from 'svelte/store';
+
+export type HyperCommandType = "COMMAND";
+
+export type HyperPageType = "PAGE";
+
+export type HyperItemType = HyperCommandType | HyperPageType;
 
 export type PaletteMode = "PAGES" | "COMMANDS";
 
@@ -13,9 +19,9 @@ export type CreateCommandPaletteOptions = {
   open?: Writable<boolean>;
   onOpenChange?: ChangeFn<boolean>;
   commands?: HyperCommand[];
-  history?: CommandID[];
+  history?: HyperId[];
   selectedIdx?: number | undefined;
-  selectedId?: CommandID;
+  selectedId?: HyperId;
   element?: HTMLElement | undefined;
   error?:
   | {
@@ -35,12 +41,26 @@ export type CreateCommandPaletteOptions = {
 // export type CommandPaletteStates = CommandPalette['states'];
 
 
-export type HCState = undefined | Writable<any>;
+export type HyperPaletteState = undefined | Writable<any>;
 
-export type CommandID = string;
+export type CommandPaletteState = {
+  commands: HyperCommand[];
+  results: HyperCommand[];
+  history: HyperId[];
+  selectedIdx?: number;
+  currentCommand?: HyperCommand;
+  element?: HTMLElement;
+  error?: { error: Error; command: HyperCommand; };
+  inputText: string;
+  open: boolean;
+};
+
+export type CommandPaletteStateStores = RecordToWritables<CommandPaletteState>;
+
+export type HyperId = string;
 
 export type CommandExecutionSource = {
-  type: 'command-palette';
+  type: 'keyboard';
 } | {
   type: 'shortcut';
   shortcut: string;
@@ -51,18 +71,18 @@ export type CommandExecutionSource = {
 
 export type CommandActionArgs = {
   command: HyperCommand;
-  hcState: HCState;
+  hpState: HyperPaletteState;
   event: Event;
   source: CommandExecutionSource;
 };
 
 export type CommandAction = (args: CommandActionArgs) => void | Promise<void>;
 
-export type CommandUnregisterCallbackArgs = { command: HyperCommand; hcState: HCState; };
+export type CommandUnregisterCallbackArgs = { command: HyperCommand; hpState: HyperPaletteState; };
 export type CommandUnregisterCallback = (arg: CommandUnregisterCallbackArgs) => void;
 
 export type HCommandDefinition = {
-  id?: CommandID;
+  id?: HyperId;
   name: string;
   description?: string;
   keywords?: string[];
@@ -73,8 +93,8 @@ export type HCommandDefinition = {
 };
 
 export type HyperCommand = {
-  type: 'command';
-  id: CommandID;
+  type: HyperCommandType;
+  id: HyperId;
   name: string;
   description: string;
   keywords: string[];
@@ -91,7 +111,7 @@ export type HyperPageDefinition = {
 };
 
 export type HyperPage = {
-  type: 'page';
+  type: HyperPageType;
   id: string;
   name: string;
   description: string;
@@ -99,40 +119,16 @@ export type HyperPage = {
   external: boolean;
 };
 
-export type HyperItems = HyperCommand | HyperPage;
+export type HyperItem = HyperCommand | HyperPage;
 
-export type HyperElementAction<T extends HyperItems> = Action<HTMLElement, T>;
+export type HyperElementAction<T extends HyperItem> = Action<HTMLElement, T>;
 
-export type InternalItem<T extends HyperItems> = {
+export type InternalItem<T extends HyperItem> = {
   item: T;
-  action: HyperElementAction<T>;
 };
 
-export type CommandPaletteState = {
-  commands: HyperCommand[];
-  results: HyperCommand[];
-  history: CommandID[];
-  selectedIdx?: number;
-  currentCommand?: HyperCommand;
-  element?: HTMLElement;
-  error?: { error: Error; command: HyperCommand; };
-  inputText: string;
-  open: boolean;
-};
+type ItemMatcher<T extends HyperItem> = HyperId | T | ((item: T) => boolean);
 
-export type CommandPaletteStateStores = RecordToWritables<CommandPaletteState>;
+export type CommandMatcher = ItemMatcher<HyperCommand>;
 
-export type CommandMatcher = CommandID | HyperCommand | ((command: HyperCommand) => boolean);
-
-export type PageMatcher = CommandID | HyperPage | ((page: HyperPage) => boolean);
-
-export type UnregisterCommand = (id: CommandID) => void;
-
-export type UnregisterCallback = () => void;
-
-export type RegisterCommand = <
-  T extends HCommandDefinition | HyperCommand | HyperCommand[] | HCommandDefinition[],
->(
-  command: T,
-  override?: boolean,
-) => UnregisterCallback;
+export type PageMatcher = ItemMatcher<HyperPage>;

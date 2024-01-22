@@ -1,4 +1,4 @@
-import type { PaletteMode, ResultsEmptyMode } from './types';
+import type { HyperItemType, PaletteMode, ResultsEmptyMode } from './types.js';
 
 export const RESULTS_EMPTY_MODE = {
   ALL: 'ALL',
@@ -10,3 +10,8 @@ export const PALETTE_MODE = {
   PAGES: 'PAGES',
   COMMANDS: 'COMMANDS',
 } as const satisfies Record<PaletteMode, string>;
+
+export const PALETTE_ITEM = {
+  COMMAND: 'COMMAND',
+  PAGE: 'PAGE',
+} as const satisfies Record<HyperItemType, string>;

@@ -1,6 +1,7 @@
-import { randomID } from '$lib/utils/funcs';
-import type { OneOrMany } from '$lib/utils/types';
-import type { HCommandDefinition, HyperCommand, HyperPage, HyperPageDefinition } from './types';
+import { randomID } from '$lib/utils/funcs.js';
+import type { OneOrMany } from '$lib/utils/types.js';
+import { PALETTE_ITEM } from './enums.js';
+import type { HCommandDefinition, HyperCommand, HyperPage, HyperPageDefinition } from './types.js';
 
 
 export function isHTMLElement(el: unknown): el is HTMLElement {
@@ -11,7 +12,7 @@ export function noopCommandAction(): void { }
 
 export function normalizeCommand(command: HCommandDefinition): HyperCommand {
   return {
-    type: 'command',
+    type: PALETTE_ITEM.COMMAND,
     id: command.id ?? randomID(),
     name: command.name,
     description: command.description ?? '',
@@ -37,7 +38,7 @@ export function defineCommand(commands: OneOrMany<HCommandDefinition>): HyperCom
 
 export function normalizePage(page: HyperPageDefinition): HyperPage {
   return {
-    type: 'page',
+    type: PALETTE_ITEM.PAGE,
     id: page.url,
     name: page.name,
     description: page.description ?? '',
@@ -57,7 +58,8 @@ export function definePage(pages: OneOrMany<HyperPageDefinition>): HyperPage[] {
   return normalizedPage;
 }
 
-export function getAllRoutes(parem: string) {
+
+export function getAppRoutes(): { name: string; path: string; }[] {
   const modules = import.meta.glob('/src/**/+page.svelte');
   const routes = [];
   for (const path in modules) {
@@ -67,15 +69,16 @@ export function getAllRoutes(parem: string) {
   return routes;
 }
 
-export function projectRoutesAsPages() {
+export function appRoutesAsPages({ rootName = 'root' } = { rootName: 'root' }): HyperPage[] {
   const modules = import.meta.glob('/src/**/+page.svelte');
   const pages: HyperPage[] = [];
   for (const path in modules) {
-    const name = path.slice(11, path.length > 24 ? -13 : -12);
+    const url = path.slice(11, path.length > 24 ? -13 : -12);
+    const name = url.split('/').pop() || rootName;
     pages.push(normalizePage({
       name: name,
-      url: name,
-      description: `Local route: ${name}`
+      url: url,
+      description: ""
     }));
   }
   return pages;

@@ -19,7 +19,7 @@
   /** @type {import('$lib/command-palette/types').HyperPage[]} */
   export let pages = [];
   export let placeholder = 'Search for commands...';
-  export let a11yInputLabel = 'Command Palette Search';
+  export let a11yInputLabel = 'Palette Search';
 
   const { portal, palette, form, label, input, page, command } = elements;
   const { open, paletteMode, matchingCommands, matchingPages } = states;
@@ -44,6 +44,7 @@
       // ensure that all keybindings are removed (in case of hot reload)
       removeAllKeyBindings(window);
       helpers.registerDefaultShortcuts();
+      // helpers.search('');
     }
   });
 
@@ -56,6 +57,7 @@
 </script>
 
 <div class="palette-portal" use:portal hidden>
+  <!-- {#if $open || true} -->
   {#if $open}
     <div {...$palette} use:palette class="palette-container">
       <form {...$form} use:form class="palette-search">
@@ -67,8 +69,34 @@
         {#if $paletteMode === PALETTE_MODE.PAGES}
           {#each $matchingPages as p (p.id)}
             <li class="result" {...$page} use:page={p} title={p.description}>
-              <div class="result-name">{p.name}</div>
-              <div class="result-description">{p.description}</div>
+              <div class="result-container">
+                <div class="result-page-icon">
+                  {#if p.external}
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="lucide lucide-globe"
+                      ><circle cx="12" cy="12" r="10" /><path
+                        d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"
+                      /><path d="M2 12h20" />
+                    </svg>
+                  {:else}
+                    <img src="/favicon.png" alt="Application icon" />
+                  {/if}
+                </div>
+                <div class="result-label">
+                  <span class="result-label-name">{p.name}</span>{#if p.name !== p.url}
+                    <span class="result-page-url">{p.url.replace(/^https?:\/\//, '')}</span>
+                  {/if}
+                </div>
+              </div>
             </li>
           {/each}
           {#if $matchingPages.length === 0}
@@ -210,11 +238,45 @@
     background-color: rgb(8 51 68 / 0.75);
   }
 
-  .result-name {
-    font-weight: 500;
+  .result-container {
+    display: flex;
+    flex-direction: row;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .result-page-icon {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-right: 6px;
+  }
+  .result-page-icon :is(svg, img) {
+    width: 16px;
+    height: 16px;
+  }
+
+  .result-label {
+    font-weight: 400;
     color: rgb(244 244 245);
     font-size: 1rem;
     line-height: 1.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .result-label-name {
+    font-weight: 400;
+    color: rgb(244 244 245);
+    font-size: 1rem;
+    line-height: 1.5rem;
+    padding-right: 6px;
+  }
+
+  .result-page-url {
+    font-size: 0.875em;
+    line-height: 1.5rem;
+    opacity: 0.75;
   }
 
   .result-description {

@@ -1,7 +1,11 @@
 {
   "name": "svelte-hypercommands",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/J-Josu/svelte-hypercommands"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && npm run package",
@@ -17,6 +21,20 @@
     ".": {
       "types": "./dist/index.d.ts",
       "svelte": "./dist/index.js"
+    },
+    "./CommandPalette.svelte": {
+      "types": "./dist/default/CommandPalette.svelte.d.ts",
+      "svelte": "./dist/default/CommandPalette.svelte"
+    }
+  },
+  "typesVersions": {
+    ">4.0": {
+      "index.d.ts": [
+        "./dist/index.d.ts"
+      ],
+      "CommandPalette.svelte": [
+        "./dist/default/CommandPalette.svelte.d.ts"
+      ]
     }
   },
   "files": [
@@ -25,7 +43,8 @@
     "!dist/**/*.spec.*"
   ],
   "peerDependencies": {
-    "svelte": "^4.0.0"
+    "svelte": "^4.0.0",
+    "@sveltejs/kit": "^1.27.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^2.1.0",

@@ -50,7 +50,7 @@
 <main>
   <h1>open: {$open}</h1>
 
-  <p><a href="/test">Test</a></p>
+  <p><a href="/dynamic">Test</a></p>
 
   <button on:click={registerCommand}> Register Command </button>
   <button on:click={() => unregisterCommands?.()}> Unregister Command </button>

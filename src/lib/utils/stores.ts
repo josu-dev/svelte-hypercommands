@@ -7,7 +7,7 @@ import type {
   Writable,
 } from 'svelte/store';
 import { writable } from 'svelte/store';
-import type { OnChangeCallback, SideEffectCallback } from './types';
+import type { OnChangeCallback, SideEffectCallback } from './types.js';
 
 export type WritablesFromRecordFn = <
   T extends Record<string, unknown>,

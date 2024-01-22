@@ -1,5 +1,5 @@
 <script>
-  import { defineCommand, definePage, projectRoutesAsPages as appRoutesAsPages } from '$lib/command-palette/helpers';
+  import { appRoutesAsPages, defineCommand, definePage } from '$lib/command-palette/helpers';
   import CommandPalette from '$lib/default/CommandPalette.svelte';
   import '../app.css';
 
@@ -63,6 +63,11 @@
     },
   ]);
   const pages = appRoutesAsPages();
+  pages.push(...definePage({
+    name: 'Google',
+    description: 'Test',
+    url: 'https://google.com',
+  }))
 </script>
 
 <CommandPalette {commands} {pages} />
