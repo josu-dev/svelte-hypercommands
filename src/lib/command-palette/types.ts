@@ -2,6 +2,10 @@ import type { RecordToWritables } from '$lib/utils/types';
 import type { Action } from 'svelte/action';
 import type { Writable } from 'svelte/store';
 
+export type PaletteMode = "PAGES" | "COMMANDS";
+
+export type ResultsEmptyMode = 'ALL' | 'HISTORY' | 'NONE';
+
 export type ChangeFn<T> = (args: { curr: T; next: T; }) => T;
 
 export type CreateCommandPaletteOptions = {
@@ -20,7 +24,7 @@ export type CreateCommandPaletteOptions = {
   }
   | undefined;
   inputText?: string;
-  emptyMode?: 'all' | 'none' | 'history';
+  emptyMode?: ResultsEmptyMode;
   portal?: HTMLElement | string | false | undefined;
   pages?: HyperPage[];
 };
@@ -30,7 +34,6 @@ export type CreateCommandPaletteOptions = {
 // export type CommandPaletteOptions = CommandPalette['options'];
 // export type CommandPaletteStates = CommandPalette['states'];
 
-export type PaletteMode = "PAGES" | "COMMANDS";
 
 export type HCState = undefined | Writable<any>;
 
@@ -121,6 +124,8 @@ export type CommandPaletteStateStores = RecordToWritables<CommandPaletteState>;
 
 export type CommandMatcher = CommandID | HyperCommand | ((command: HyperCommand) => boolean);
 
+export type PageMatcher = CommandID | HyperPage | ((page: HyperPage) => boolean);
+
 export type UnregisterCommand = (id: CommandID) => void;
 
 export type UnregisterCallback = () => void;
@@ -131,5 +136,3 @@ export type RegisterCommand = <
   command: T,
   override?: boolean,
 ) => UnregisterCallback;
-
-export type EmptyModes = 'all' | 'history' | 'none';

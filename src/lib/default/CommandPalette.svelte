@@ -1,7 +1,5 @@
 <script context="module">
   import { createCommandPalette } from '$lib/command-palette/create';
-  import { removeAllKeyBindings } from '$lib/keyboard/keystroke';
-  import { isBrowser } from '$lib/utils/funcs';
 
   const state = createCommandPalette();
 
@@ -11,15 +9,14 @@
 </script>
 
 <script>
+  import { PALETTE_MODE } from '$lib/command-palette/enums';
+  import { removeAllKeyBindings } from '$lib/keyboard/keystroke';
+  import { isBrowser } from '$lib/utils/funcs';
   import { onDestroy, onMount } from 'svelte';
 
-  /**
-   * @type {import('$lib/command-palette/types').HyperCommand[]}
-   */
+  /** @type {import('$lib/command-palette/types').HyperCommand[]} */
   export let commands = [];
-  /**
-   * @type {import('$lib/command-palette/types').HyperPage[]}
-   */
+  /** @type {import('$lib/command-palette/types').HyperPage[]} */
   export let pages = [];
   export let placeholder = 'Search for commands...';
   export let a11yInputLabel = 'Command Palette Search';
@@ -67,7 +64,7 @@
         <input {...$input} use:input {placeholder} class="search-input" />
       </form>
       <ul class="palette-results">
-        {#if $paletteMode === 'PAGES'}
+        {#if $paletteMode === PALETTE_MODE.PAGES}
           {#each $matchingPages as p (p.id)}
             <li class="command" {...$page} use:page={p}>
               <div class="command-name">{p.name}</div>
@@ -115,7 +112,7 @@
     flex-direction: column;
     width: 90vw;
     max-width: 640px;
-    max-height: 80vh;
+    max-height: 20vh;
     pointer-events: auto;
     color: white;
     border-style: solid;

@@ -8,13 +8,14 @@ import type { OneOrMany } from '$lib/utils/types';
 import { tick } from 'svelte';
 import { get, type Writable } from 'svelte/store';
 import { builder } from './builder';
+import { PALETTE_MODE, RESULTS_EMPTY_MODE } from './enums';
 import { DuplicatedIDError } from './errors';
 import { normalizeCommand, normalizePage } from './helpers';
 import type {
   CommandID,
   CommandMatcher,
   CreateCommandPaletteOptions,
-  EmptyModes,
+  ResultsEmptyMode,
   CommandExecutionSource as ExecutionSource,
   HCommandDefinition,
   HyperCommand,
@@ -22,6 +23,7 @@ import type {
   HyperPage,
   HyperPageDefinition,
   InternalItem,
+  PageMatcher,
   PaletteMode
 } from './types';
 
@@ -41,7 +43,7 @@ const defaults = {
   element: undefined,
   selectedIdx: undefined,
   selectedId: undefined,
-  emptyMode: 'all' as EmptyModes,
+  emptyMode: RESULTS_EMPTY_MODE.ALL,
   portal: false as const,
   pages: []
 };
@@ -90,11 +92,11 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     resultList: randomID(),
   };
 
-  let _emptyMode: EmptyModes = defaults.emptyMode;
+  let _emptyMode: ResultsEmptyMode = defaults.emptyMode;
 
   let _inputElement: HTMLInputElement | null = null;
 
-  const paletteMode = writableWithValue<PaletteMode>('COMMANDS');
+  const paletteMode = writableWithValue<PaletteMode>(PALETTE_MODE.COMMANDS);
 
   const _allCommands: InternalItem<HyperCommand>[] = [];
 
@@ -157,7 +159,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       _currentAllItems = _allCommands;
       _currentSearcher = _commandSearcher;
       _currentResults = commandResults;
-      paletteMode.set('COMMANDS');
+      paletteMode.set(PALETTE_MODE.COMMANDS);
       open.set(true);
       updateResults(true);
       registerEscKey();
@@ -177,7 +179,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       _currentAllItems = _allPages;
       _currentSearcher = _pageSearcher;
       _currentResults = pageResults;
-      paletteMode.set('PAGES');
+      paletteMode.set(PALETTE_MODE.PAGES);
       open.set(true);
       updateResults(true);
       registerEscKey();
@@ -344,9 +346,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     closePalette();
   }
 
-  /**
-   * @type {import('./types.js').CommandElementAction}
-   */
   function hyperItemAction(node: HTMLElement, command: HyperItems) {
     node.addEventListener('click', commandClick as any);
     node.dataset['command-id'] = command.id;
@@ -400,8 +399,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     commandShortcutsCleanup.delete(command.id);
   }
 
-  function registerCommand<T extends HCommandDefinition | HyperCommand | HyperCommand[] | HCommandDefinition[]>(
-    command: T,
+  function registerCommand(
+    command: OneOrMany<HCommandDefinition> | OneOrMany<HyperCommand>,
     override: boolean = false,
   ) {
     const unsafeCommands = Array.isArray(command) ? command : [command];
@@ -493,7 +492,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     };
   }
 
-  function unregisterCommand(selector: CommandMatcher | CommandMatcher[]) {
+  function unregisterCommand(selector: OneOrMany<CommandMatcher>) {
     const matchers = Array.isArray(selector) ? selector : [selector];
 
     const removedCommands: HyperCommand[] = [];
@@ -526,13 +525,13 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       return $commands;
     });
 
-    if (open.value) {
+    if (open.value && paletteMode.value === PALETTE_MODE.COMMANDS) {
       updateResults(true);
     }
   }
 
-  function registerPage<T extends OneOrMany<HyperPageDefinition | HyperPage>>(
-    page: T,
+  function registerPage(
+    page: OneOrMany<HyperPageDefinition | HyperPage>,
     override: boolean = false,
     silentError: boolean = true,
   ) {
@@ -620,15 +619,53 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     };
   }
 
+  function unregisterPage(selector: OneOrMany<PageMatcher>) {
+    const matchers = Array.isArray(selector) ? selector : [selector];
+
+    const removedPages: HyperPage[] = [];
+
+    pages.update(($pages) => {
+      for (const matcher of matchers) {
+        let index: number;
+        if (typeof matcher === 'function') {
+          index = $pages.findIndex(matcher);
+        } else if (typeof matcher === 'object') {
+          index = $pages.findIndex((command) => command.id === matcher.id);
+        } else {
+          index = $pages.findIndex((command) => command.id === matcher);
+        }
+
+        if (index < 0) {
+          continue;
+        }
+
+        const [oldPage] = $pages.splice(index, 1);
+
+        // oldPage.unregisterCallback?.({ command: oldPage, hcState: undefined });
+        removedPages.push(oldPage);
+      }
+
+      for (const removedPage of removedPages) {
+        _pageSearcher.remove((doc) => doc.item.id === removedPage.id);
+      }
+
+      return $pages;
+    });
+
+    if (open.value && paletteMode.value === PALETTE_MODE.PAGES) {
+      updateResults(true);
+    }
+  }
+
   function searchFn(pattern: string) {
     if (pattern === '') {
-      if (_emptyMode === 'all') {
+      if (_emptyMode === RESULTS_EMPTY_MODE.ALL) {
         _currentResults.update(($state) => {
           $state = _currentAllItems.map((result) => result.item) as HyperCommand[] | HyperPage[];
           return $state;
         });
         return;
-      } else if (_emptyMode === 'history') {
+      } else if (_emptyMode === RESULTS_EMPTY_MODE.HISTORY) {
         _currentResults.update(($state) => {
           const ids = get(history);
           $state = _currentAllItems
@@ -637,7 +674,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
           return $state;
         });
         return;
-      } else if (_emptyMode === 'none') {
+      } else if (_emptyMode === RESULTS_EMPTY_MODE.NONE) {
         _currentResults.update(() => {
           return [];
         });
@@ -868,9 +905,9 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         });
         let query = rawValue;
 
-        const newInputMode = rawValue.startsWith('>') ? 'COMMANDS' : 'PAGES';
+        const newInputMode = rawValue.startsWith('>') ? PALETTE_MODE.COMMANDS : PALETTE_MODE.PAGES;
 
-        if (newInputMode === 'PAGES') {
+        if (newInputMode === PALETTE_MODE.PAGES) {
           _currentAllItems = _allPages;
           _currentSearcher = _pageSearcher;
           _currentResults = pageResults;
@@ -1055,6 +1092,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       togglePalette,
       registerDefaultShortcuts,
       registerPage,
+      unregisterPage,
     },
   };
 }
