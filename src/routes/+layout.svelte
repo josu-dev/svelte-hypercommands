@@ -1,9 +1,9 @@
-<script>
-  import { appRoutesAsPages, defineCommand, definePage } from '$lib/command-palette/helpers';
+<script lang="ts">
+  import { appRoutesAsPages, defineCommand, definePage } from '$lib/command-palette/helpers.js';
   import CommandPalette from '$lib/default/CommandPalette.svelte';
   import '../app.css';
 
-  /** @type {import('$lib/command-palette/types').HyperCommand[]}*/
+  /** @type {import('$lib/command-palette/types.js').HyperCommand[]}*/
   const commands = defineCommand([
     {
       id: 'command-palette',

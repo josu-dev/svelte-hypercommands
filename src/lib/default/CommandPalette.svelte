@@ -1,5 +1,5 @@
-<script context="module">
-  import { createCommandPalette } from '$lib/command-palette/create';
+<script lang="ts" context="module">
+  import { createCommandPalette } from '$lib/command-palette/create.js';
 
   const state = createCommandPalette();
 
@@ -8,26 +8,22 @@
   export const helpers = state.helpers;
 </script>
 
-<script>
-  import { PALETTE_MODE } from '$lib/command-palette/enums';
-  import { removeAllKeyBindings } from '$lib/keyboard/keystroke';
-  import { isBrowser } from '$lib/utils/funcs';
+<script lang="ts">
+  import { PALETTE_MODE } from '$lib/command-palette/enums.js';
+  import { removeAllKeyBindings } from '$lib/keyboard/keystroke.js';
+  import { isBrowser } from '$lib/utils/funcs.js';
   import { onMount } from 'svelte';
 
-  /** @type {import('$lib/command-palette/types').HyperCommand[]} */
-  export let commands = [];
-  /** @type {import('$lib/command-palette/types').HyperPage[]} */
-  export let pages = [];
+  export let commands: import('$lib/command-palette/types.js').HyperCommand[] = [];
+  export let pages: import('$lib/command-palette/types.js').HyperPage[] = [];
   export let placeholder = 'Search for commands...';
   export let a11yInputLabel = 'Palette Search';
 
   const { portal, palette, form, label, input, page, command } = elements;
   const { open, paletteMode, matchingCommands, matchingPages } = states;
 
-  /** @type {() => void}*/
-  let unregisterCommands;
-  /** @type {() => void}*/
-  let unregisterPages;
+  let unregisterCommands: () => void;
+  let unregisterPages: () => void;
 
   $: if (isBrowser) {
     unregisterCommands?.();

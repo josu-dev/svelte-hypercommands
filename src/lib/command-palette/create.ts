@@ -1,16 +1,16 @@
 import { goto } from '$app/navigation';
-import { addKeyBinding, removeKeyBinding } from '$lib/keyboard';
-import { Searcher } from '$lib/search';
-import { useClickOutside, usePortal } from '$lib/utils/actions';
-import { log, randomID } from '$lib/utils/funcs';
-import { addValueAccessor, writableWithValue, writablesFromRecord } from '$lib/utils/stores';
-import type { OneOrMany } from '$lib/utils/types';
+import { addKeyBinding, removeKeyBinding } from '$lib/keyboard/index.js';
+import { Searcher } from '$lib/search/index.js';
+import { useClickOutside, usePortal } from '$lib/utils/actions.js';
+import { log, randomID } from '$lib/utils/funcs.js';
+import { addValueAccessor, writableWithValue, writablesFromRecord } from '$lib/utils/stores.js';
+import type { OneOrMany } from '$lib/utils/types.js';
 import { tick } from 'svelte';
 import { get, type Writable } from 'svelte/store';
-import { builder } from './builder';
-import { PALETTE_ITEM, PALETTE_MODE, RESULTS_EMPTY_MODE } from './enums';
-import { DuplicatedIDError } from './errors';
-import { normalizeCommand, normalizePage } from './helpers';
+import { builder } from './builder.js';
+import { PALETTE_ITEM, PALETTE_MODE, RESULTS_EMPTY_MODE } from './enums.js';
+import { DuplicatedIDError } from './errors.js';
+import { normalizeCommand, normalizePage } from './helpers.js';
 import type {
   CommandMatcher,
   CreateCommandPaletteOptions,
@@ -25,7 +25,7 @@ import type {
   PageMatcher,
   PaletteMode,
   ResultsEmptyMode
-} from './types';
+} from './types.js';
 
 const dataKey = {
   itemId: 'hyperItemId',
@@ -800,7 +800,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         id: ids.searchForm,
       };
     },
-    action: (node) => {
+    action: (node:HTMLFormElement) => {
       function onSubmit(event: SubmitEvent) {
         event.preventDefault();
         const $selectedIdx = get(selectedIdx);

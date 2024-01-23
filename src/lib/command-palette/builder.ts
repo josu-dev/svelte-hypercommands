@@ -62,7 +62,7 @@ type BuilderStore<
         // @ts-ignore - This is a valid type, but TS doesn't like it for some reason. TODO: Figure out why
         ...args: Parameters<ReturnType<R>>
       ) => ReturnType<R> & { [K in `data-melt-${Name}`]: '' } & { action: A }) & { action: A }
-    : ReturnType<R> & { [K in `data-melt-${Name}`]: '' } & { action: A }
+    : ReturnType<R> & { [K in `data-melt-${Name}`]: '' }
 >;
 
 export function builder<

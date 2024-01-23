@@ -1,5 +1,5 @@
-<script>
-  import { defineCommand } from '$lib/command-palette/helpers';
+<script lang="ts">
+  import { defineCommand } from '$lib/command-palette/helpers.js';
   import { helpers, states } from '$lib/default/CommandPalette.svelte';
   import { onDestroy } from 'svelte';
 
@@ -34,8 +34,7 @@
     },
   ]);
 
-  /** @type {() => void}*/
-  let unregisterCommands;
+  let unregisterCommands: () => void;
 
   function registerCommand() {
     unregisterCommands?.();
