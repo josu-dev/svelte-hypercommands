@@ -5,30 +5,32 @@
 
   const command = defineCommand([
     {
-      id: 'dynamic-command',
-      name: 'Home Dynamic Command',
+      id: 'dynamic-command-1',
+      name: 'Dynamic console log',
       description: 'This command was dynamically added to the command palette',
+      shortcut: '$mod+1',
       action: () => {
-        console.log('Dynamic command was executed');
+        console.log('Dynamic command was executed on home page');
       },
     },
     {
-      id: 'alert-command',
-      name: 'Home Alert Command',
+      id: 'dynamic-command-2',
+      name: 'Dynamic Alert',
       description: 'This command will alert you',
+      shortcut: '$mod+2',
       action: () => {
-        alert('Alert command was executed');
+        alert('Alert command was executed on home page');
       },
     },
     {
-      id: 'alert-command3',
-      name: 'Home Alert Command',
-      description: 'This command will alert you',
+      id: 'dynamic-command-3',
+      name: 'Dynamic copy URL',
+      description: 'This command will copy the URL to your clipboard',
+      shortcut: '$mod+3',
       action: () => {
         navigator.clipboard.writeText(window.location.href);
-        alert('Copied URL to clipboard');
+        alert('Copied URL to clipboard on home page');
       },
-      shortcut: '$mod+Y',
     },
   ]);
 

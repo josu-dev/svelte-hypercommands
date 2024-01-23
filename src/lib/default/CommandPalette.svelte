@@ -12,7 +12,7 @@
   import { PALETTE_MODE } from '$lib/command-palette/enums';
   import { removeAllKeyBindings } from '$lib/keyboard/keystroke';
   import { isBrowser } from '$lib/utils/funcs';
-  import { onDestroy, onMount } from 'svelte';
+  import { onMount } from 'svelte';
 
   /** @type {import('$lib/command-palette/types').HyperCommand[]} */
   export let commands = [];
@@ -39,20 +39,19 @@
   }
 
   onMount(() => {
-    if (isBrowser) {
-      // TODO: This should be done in a better way?
-      // ensure that all keybindings are removed (in case of hot reload)
-      removeAllKeyBindings(window);
-      helpers.registerDefaultShortcuts();
-      // helpers.search('');
-    }
-  });
+    // TODO: This should be done in a better way?
 
-  onDestroy(() => {
-    if (isBrowser) {
+    // ensure that all keybindings are removed (in case of hot reload)
+    removeAllKeyBindings(window);
+    helpers.registerDefaultShortcuts();
+
+    // helpers.search('');
+
+    return () => {
       unregisterCommands?.();
       unregisterPages?.();
-    }
+      console
+    };
   });
 </script>
 
@@ -85,10 +84,41 @@
                       class="lucide lucide-globe"
                       ><circle cx="12" cy="12" r="10" /><path
                         d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"
-                      /><path d="M2 12h20" />
-                    </svg>
+                      /><path d="M2 12h20" /></svg
+                    >
                   {:else}
-                    <img src="/favicon.png" alt="Application icon" />
+                    <!-- <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="lucide lucide-map-pin"
+                      ><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle
+                        cx="12"
+                        cy="10"
+                        r="3"
+                      /></svg
+                    > -->
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="lucide lucide-home"
+                      ><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline
+                        points="9 22 9 12 15 12 15 22"
+                      /></svg
+                    >
                   {/if}
                 </div>
                 <div class="result-label">

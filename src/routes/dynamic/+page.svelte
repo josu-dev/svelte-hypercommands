@@ -6,17 +6,18 @@
   const command = defineCommand([
     {
       id: 'dynamic-command-1',
-      name: 'Test Dynamic Command',
+      name: 'Test Dynamic',
       description: 'This command was dynamically added to the command palette',
+      shortcut: '$mod+1',
       action: ({ source }) => {
         console.log('Dynamic command was executed', source);
       },
-      shortcut: '$mod+Shift+E',
     },
     {
       id: 'dynamic-command-2',
-      name: 'Test Alert Command',
+      name: 'Test Alert',
       description: 'This command will alert you',
+      shortcut: '$mod+2',
       action: () => {
         alert('Alert command was executed');
       },
