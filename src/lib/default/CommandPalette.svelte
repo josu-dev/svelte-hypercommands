@@ -11,7 +11,7 @@
 <script lang="ts">
   import { PALETTE_MODE } from '$lib/command-palette/enums.js';
   import { removeAllKeyBindings } from '$lib/keyboard/keystroke.js';
-  import { isBrowser } from '$lib/utils/funcs.js';
+  import { isBrowser } from '$lib/utils/functions.js';
   import { onMount } from 'svelte';
 
   export let commands: import('$lib/command-palette/types.js').HyperCommand[] = [];
@@ -46,7 +46,6 @@
     return () => {
       unregisterCommands?.();
       unregisterPages?.();
-      console
     };
   });
 </script>
@@ -198,8 +197,18 @@
     border-radius: 0.125rem;
     font-size: 1rem /* 16px */;
     line-height: 1.5rem /* 24px */;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
-      Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      Roboto,
+      Oxygen,
+      Ubuntu,
+      Cantarell,
+      'Open Sans',
+      'Helvetica Neue',
+      sans-serif;
     --tw-ring-color: rgb(113 113 122 / 0.25);
     --tw-ring-offset-width: 1px;
     --tw-ring-inset: inset;
@@ -214,10 +223,8 @@
   }
   .search-input:focus {
     --tw-ring-color: rgb(0, 120, 212);
-    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width)
-      var(--tw-ring-offset-color);
-    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(var(--tw-ring-offset-width))
-      var(--tw-ring-color);
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(var(--tw-ring-offset-width)) var(--tw-ring-color);
   }
 
   .palette-results {

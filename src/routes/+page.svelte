@@ -9,7 +9,7 @@
       name: 'Dynamic console log',
       description: 'This command was dynamically added to the command palette',
       shortcut: '$mod+1',
-      action: () => {
+      onAction: () => {
         console.log('Dynamic command was executed on home page');
       },
     },
@@ -18,7 +18,7 @@
       name: 'Dynamic Alert',
       description: 'This command will alert you',
       shortcut: '$mod+2',
-      action: () => {
+      onAction: () => {
         alert('Alert command was executed on home page');
       },
     },
@@ -27,7 +27,35 @@
       name: 'Dynamic copy URL',
       description: 'This command will copy the URL to your clipboard',
       shortcut: '$mod+3',
-      action: () => {
+      onAction: () => {
+        navigator.clipboard.writeText(window.location.href);
+        alert('Copied URL to clipboard on home page');
+      },
+    },
+    {
+      id: 'dynamic-command-4',
+      name: 'Dynamic console log 2',
+      description: 'This command was dynamically added to the command palette',
+      shortcut: '$mod+4',
+      onAction: () => {
+        console.log('Dynamic command was executed on home page');
+      },
+    },
+    {
+      id: 'dynamic-command-5',
+      name: 'Dynamic Alert 2',
+      description: 'This command will alert you',
+      shortcut: '$mod+5',
+      onAction: () => {
+        alert('Alert command was executed on home page');
+      },
+    },
+    {
+      id: 'dynamic-command-6',
+      name: 'Dynamic copy URL 2',
+      description: 'This command will copy the URL to your clipboard',
+      shortcut: '$mod+6',
+      onAction: () => {
         navigator.clipboard.writeText(window.location.href);
         alert('Copied URL to clipboard on home page');
       },
@@ -49,9 +77,9 @@
 </script>
 
 <main>
-  <h1>open: {$open}</h1>
+  <h1>Home page</h1>
 
-  <p><a href="/dynamic">Test</a></p>
+  <p>Open: {$open}</p>
 
   <button on:click={registerCommand}> Register Command </button>
   <button on:click={() => unregisterCommands?.()}> Unregister Command </button>

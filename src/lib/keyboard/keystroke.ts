@@ -30,7 +30,7 @@ export interface KeyBindingHandlerOptions {
 /**
  * Options to configure the behavior of keybindings.
  */
-export type KeyBindingOptions = KeyBindingHandlerOptions &  {
+export type KeyBindingOptions = KeyBindingHandlerOptions & {
   /**
    * Key presses will listen to this event (default: "keydown").
    */
@@ -43,7 +43,7 @@ export type KeyBindingOptions = KeyBindingHandlerOptions &  {
    * A function that returns whether the keybinding should run.
    */
   shouldRun: (event: KeyboardEvent) => boolean;
-}
+};
 
 /**
  * Options to configure the behavior of keybindings.
@@ -61,7 +61,7 @@ export type AddKeyBindOptions = KeyBindingHandlerOptions & {
    * A function that returns whether the keybinding should run.
    */
   shouldRun?: (event: KeyboardEvent) => boolean;
-}
+};
 
 /**
  * These are the modifier keys that change the meaning of keybindings.
@@ -112,7 +112,7 @@ const ALT_GRAPH_ALIASES = PLATFORM === 'Win32' ? ['Control', 'Alt'] : APPLE_DEVI
 function getModifierState(event: KeyboardEvent, mod: string) {
   return typeof event.getModifierState === 'function'
     ? event.getModifierState(mod) ||
-        (ALT_GRAPH_ALIASES.includes(mod) && event.getModifierState('AltGraph'))
+    (ALT_GRAPH_ALIASES.includes(mod) && event.getModifierState('AltGraph'))
     : false;
 }
 
@@ -143,26 +143,26 @@ export function parseKeybinding(str: string): KeyBindingPress[] {
 function match(event: KeyboardEvent, press: KeyBindingPress): boolean {
   // prettier-ignore
   return !(
-		// Allow either the `event.key` or the `event.code`
-		// MDN event.key: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key
-		// MDN event.code: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
-		(
-			press[1].toUpperCase() !== event.key.toUpperCase() &&
-			press[1] !== event.code
-		) ||
+    // Allow either the `event.key` or the `event.code`
+    // MDN event.key: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key
+    // MDN event.code: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
+    (
+      press[1].toUpperCase() !== event.key.toUpperCase() &&
+      press[1] !== event.code
+    ) ||
 
-		// Ensure all the modifiers in the keybinding are pressed.
-		press[0].find(mod => {
-			return !getModifierState(event, mod)
-		}) ||
+    // Ensure all the modifiers in the keybinding are pressed.
+    press[0].find(mod => {
+      return !getModifierState(event, mod);
+    }) ||
 
-		// KEYBINDING_MODIFIER_KEYS (Shift/Control/etc) change the meaning of a
-		// keybinding. So if they are pressed but aren't part of the current
-		// keybinding press, then we don't have a match.
-		KEYBINDING_MODIFIER_KEYS.find(mod => {
-			return !press[0].includes(mod) && press[1] !== mod && getModifierState(event, mod)
-		})
-	)
+    // KEYBINDING_MODIFIER_KEYS (Shift/Control/etc) change the meaning of a
+    // keybinding. So if they are pressed but aren't part of the current
+    // keybinding press, then we don't have a match.
+    KEYBINDING_MODIFIER_KEYS.find(mod => {
+      return !press[0].includes(mod) && press[1] !== mod && getModifierState(event, mod);
+    })
+  );
 }
 
 class KeyBindingHandler {
@@ -172,8 +172,8 @@ class KeyBindingHandler {
   #timeout: number;
   event: 'keydown' | 'keyup';
 
-  constructor(options: KeyBindingOptions= { event: DEFAULT_EVENT, once: false, shouldRun: DEFAULT_SHOULD_RUN }) {
-    this.keyBindings = []
+  constructor(options: KeyBindingOptions = { event: DEFAULT_EVENT, once: false, shouldRun: DEFAULT_SHOULD_RUN }) {
+    this.keyBindings = [];
     this.#possibleMatches = new Map<KeyBindingPress[], KeyBindingPress[]>();
     this.#timeoutID = undefined;
     this.#timeout = options.timeout ?? DEFAULT_TIMEOUT;
@@ -225,7 +225,7 @@ class KeyBindingHandler {
           callback.splice(callbacksToRemove[i], 1);
         }
       }
-    };
+    }
 
     clearTimeout(this.#timeoutID);
     this.#timeoutID = setTimeout(
@@ -330,10 +330,10 @@ export function addKeyBinding(
     event: options.event ?? DEFAULT_EVENT,
     once: options.once ?? false,
     shouldRun: options.shouldRun ?? DEFAULT_SHOULD_RUN,
-  }
+  };
 
   const eventType = options.event ?? DEFAULT_EVENT;
-  const listenerMap = (eventType === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners)
+  const listenerMap = (eventType === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
   let handler = listenerMap.get(targetElement);
   if (!handler) {
     handler = new KeyBindingHandler(_options);
@@ -359,7 +359,7 @@ export function removeKeyBindingCallback(
     return false;
   }
 
-  const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners)
+  const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
   const handler = listenerMap.get(targetElement);
   if (!handler) {
     return;
@@ -379,13 +379,13 @@ export function removeKeyBinding(target: Window | HTMLElement | string, keyBindi
     return false;
   }
 
-  const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners)
+  const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
   const handler = listenerMap.get(targetElement);
   if (!handler) {
     return;
   }
   const keyBindingPress = parseKeybinding(keyBinding);
-  handler.removeKeyBinding(keyBindingPress, () => {});
+  handler.removeKeyBinding(keyBindingPress, () => { });
   if (handler.keyBindings.length === 0) {
     listenerMap.delete(targetElement);
     targetElement.removeEventListener(handler.event, handler.onKeyEvent as any);
@@ -399,7 +399,7 @@ export function removeAllKeyBindings(target: Window | HTMLElement | string, even
     return false;
   }
 
-  const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners)
+  const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
   const handler = listenerMap.get(targetElement);
   if (!handler) {
     return;

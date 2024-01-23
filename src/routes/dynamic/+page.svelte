@@ -9,7 +9,7 @@
       name: 'Test Dynamic',
       description: 'This command was dynamically added to the command palette',
       shortcut: '$mod+1',
-      action: ({ source }) => {
+      onAction: ({ source }) => {
         console.log('Dynamic command was executed', source);
       },
     },
@@ -18,7 +18,7 @@
       name: 'Test Alert',
       description: 'This command will alert you',
       shortcut: '$mod+2',
-      action: () => {
+      onAction: () => {
         alert('Alert command was executed');
       },
     },

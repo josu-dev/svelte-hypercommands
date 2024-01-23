@@ -1,4 +1,4 @@
-import type { RecordToWritables } from '$lib/utils/types.js';
+import type { MaybePromise, RecordToWritables } from '$lib/utils/types.js';
 import type { Action } from 'svelte/action';
 import type { Writable } from 'svelte/store';
 
@@ -23,12 +23,6 @@ export type CreateCommandPaletteOptions = {
   selectedIdx?: number | undefined;
   selectedId?: HyperId;
   element?: HTMLElement | undefined;
-  error?:
-  | {
-    error: unknown;
-    command: HyperCommand;
-  }
-  | undefined;
   inputText?: string;
   emptyMode?: ResultsEmptyMode;
   portal?: HTMLElement | string | false | undefined;
@@ -59,7 +53,7 @@ export type CommandPaletteStateStores = RecordToWritables<CommandPaletteState>;
 
 export type HyperId = string;
 
-export type CommandExecutionSource = {
+export type CommandRequestSource = {
   type: 'keyboard';
 } | {
   type: 'shortcut';
@@ -69,27 +63,31 @@ export type CommandExecutionSource = {
   event: MouseEvent;
 };
 
+export type CommandRequestHook = (command: HyperCommand, source: CommandRequestSource) => MaybePromise<boolean | void>;
+
 export type CommandActionArgs = {
   command: HyperCommand;
-  hpState: HyperPaletteState;
-  event: Event;
-  source: CommandExecutionSource;
+  state: HyperPaletteState;
+  source: CommandRequestSource;
 };
 
-export type CommandAction = (args: CommandActionArgs) => void | Promise<void>;
+export type CommandActionHook = (args: CommandActionArgs) => MaybePromise<void>;
 
-export type CommandUnregisterCallbackArgs = { command: HyperCommand; hpState: HyperPaletteState; };
-export type CommandUnregisterCallback = (arg: CommandUnregisterCallbackArgs) => void;
+export type CommandErrorHook = (args: CommandActionArgs & { error: unknown; }) => MaybePromise<void>;
 
-export type HCommandDefinition = {
+export type CommandUnregisterHook = (command: HyperCommand) => MaybePromise<void>;
+
+export type HyperCommandDefinition = {
   id?: HyperId;
   name: string;
   description?: string;
   keywords?: string[];
   category?: string;
   shortcut?: string | string[];
-  action?: CommandAction;
-  unregisterCallback?: CommandUnregisterCallback;
+  onRequest?: CommandRequestHook;
+  onAction?: CommandActionHook;
+  onError?: CommandErrorHook;
+  onUnregister?: CommandUnregisterHook;
 };
 
 export type HyperCommand = {
@@ -97,11 +95,13 @@ export type HyperCommand = {
   id: HyperId;
   name: string;
   description: string;
-  keywords: string[];
   category: string;
-  action: CommandAction;
-  unregisterCallback?: CommandUnregisterCallback;
+  keywords: string[];
   shortcut?: string[];
+  onRequest: CommandRequestHook;
+  onAction: CommandActionHook;
+  onError?: CommandErrorHook;
+  onUnregister?: CommandUnregisterHook;
 };
 
 export type HyperPageDefinition = {

@@ -1,30 +1,34 @@
-import { randomID } from '$lib/utils/funcs.js';
+import { randomID } from '$lib/utils/functions.js';
 import type { OneOrMany } from '$lib/utils/types.js';
 import { PALETTE_ITEM } from './enums.js';
-import type { HCommandDefinition, HyperCommand, HyperPage, HyperPageDefinition } from './types.js';
+import type { HyperCommand, HyperCommandDefinition, HyperPage, HyperPageDefinition } from './types.js';
 
 
 export function isHTMLElement(el: unknown): el is HTMLElement {
   return el instanceof HTMLElement;
 }
 
+export function noopCommandRequest(): void { }
+
 export function noopCommandAction(): void { }
 
-export function normalizeCommand(command: HCommandDefinition): HyperCommand {
+export function normalizeCommand(command: HyperCommandDefinition): HyperCommand {
   return {
     type: PALETTE_ITEM.COMMAND,
     id: command.id ?? randomID(),
     name: command.name,
     description: command.description ?? '',
-    keywords: command.keywords ?? [],
     category: command.category ?? '',
-    action: command.action ?? noopCommandAction,
-    unregisterCallback: command.unregisterCallback,
+    keywords: command.keywords ?? [],
     shortcut: Array.isArray(command.shortcut) ? command.shortcut : command.shortcut ? [command.shortcut] : [],
+    onRequest: command.onRequest ?? noopCommandRequest,
+    onAction: command.onAction ?? noopCommandAction,
+    onError: command.onError,
+    onUnregister: command.onUnregister,
   };
 }
 
-export function defineCommand(commands: OneOrMany<HCommandDefinition>): HyperCommand[] {
+export function defineCommand(commands: OneOrMany<HyperCommandDefinition>): HyperCommand[] {
   commands = Array.isArray(commands) ? commands : [commands];
 
   const normalizedCommands = [];

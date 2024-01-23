@@ -2,7 +2,7 @@ import { goto } from '$app/navigation';
 import { addKeyBinding, removeKeyBinding } from '$lib/keyboard/index.js';
 import { Searcher } from '$lib/search/index.js';
 import { useClickOutside, usePortal } from '$lib/utils/actions.js';
-import { log, randomID } from '$lib/utils/funcs.js';
+import { log, randomID } from '$lib/utils/functions.js';
 import { addValueAccessor, writableWithValue, writablesFromRecord } from '$lib/utils/stores.js';
 import type { OneOrMany } from '$lib/utils/types.js';
 import { tick } from 'svelte';
@@ -14,9 +14,9 @@ import { normalizeCommand, normalizePage } from './helpers.js';
 import type {
   CommandMatcher,
   CreateCommandPaletteOptions,
-  CommandExecutionSource as ExecutionSource,
-  HCommandDefinition,
+  CommandRequestSource as ExecutionSource,
   HyperCommand,
+  HyperCommandDefinition,
   HyperId,
   HyperItem,
   HyperPage,
@@ -157,19 +157,24 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     removeKeyBinding(window, 'Escape');
   }
 
-  function shortCutOpenCommandPalette(event: KeyboardEvent) {
+  function shortcutOpenCommandPalette(event: KeyboardEvent) {
     event.preventDefault();
+
+    _currentAllItems = _allCommands;
+    _currentSearcher = _commandSearcher;
+    _currentResults = commandResults;
+
+    paletteMode.set(PALETTE_MODE.COMMANDS);
+    selectedIdx.set(undefined);
+    selectedId.set(undefined);
+    inputText.set('');
+
     if (!open.value) {
-      _currentAllItems = _allCommands;
-      _currentSearcher = _commandSearcher;
-      _currentResults = commandResults;
-      paletteMode.set(PALETTE_MODE.COMMANDS);
-      selectedIdx.set(undefined);
-      selectedId.set(undefined);
       open.set(true);
-      updateResults(true);
       registerEscKey();
     }
+
+    updateResults(true);
 
     tick().then(() => {
       if (_inputElement) {
@@ -179,22 +184,30 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     });
   }
 
-  function shortCutOpenPagePalette(event: KeyboardEvent) {
+  function shortcutOpenPagePalette(event: KeyboardEvent) {
     event.preventDefault();
+
+    _currentAllItems = _allPages;
+    _currentSearcher = _pageSearcher;
+    _currentResults = pageResults;
+
+    paletteMode.set(PALETTE_MODE.PAGES);
+    selectedIdx.set(undefined);
+    selectedId.set(undefined);
+    inputText.set('');
+
     if (!open.value) {
-      _currentAllItems = _allPages;
-      _currentSearcher = _pageSearcher;
-      _currentResults = pageResults;
-      paletteMode.set(PALETTE_MODE.PAGES);
-      selectedIdx.set(undefined);
-      selectedId.set(undefined);
       open.set(true);
-      updateResults(true);
       registerEscKey();
     }
 
+    updateResults(true);
+
     tick().then(() => {
-      _inputElement?.focus();
+      if (_inputElement) {
+        _inputElement.value = '';
+        _inputElement.focus();
+      }
     });
   }
 
@@ -210,14 +223,11 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
   const commandShortcutsCleanup: Map<HyperId, (() => void)[]> = new Map();
 
   function clearInput() {
+    const newValue = paletteMode.value === PALETTE_MODE.COMMANDS ? '>' : '';
     if (_inputElement) {
-      _inputElement.value = '';
+      _inputElement.value = newValue;
     }
-
-    inputText.update(($inputText) => {
-      $inputText = '';
-      return $inputText;
-    });
+    inputText.set(newValue);
   }
 
   function resetPalette() {
@@ -247,47 +257,46 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     searchFn($inputText);
   }
 
-  function executeCommand(command: HyperCommand, source: ExecutionSource) {
+  async function executeCommand(command: HyperCommand, source: ExecutionSource) {
     if (!command) {
       log?.('warn', 'No command provided to executeCommand');
       return;
     }
 
-    currentCommand.update(($currentCommand) => {
-      $currentCommand = command;
-      return $currentCommand;
-    });
+    currentCommand.set(command);
+
+    const abortExecution = (await command.onRequest(command, source)) === false;
+    if (abortExecution) {
+      return;
+    }
 
     try {
-      command.action({
+      await command.onAction({
         command,
-        event: new Event('command-execution'),
-        hpState: undefined,
+        state: undefined,
         source,
       });
-      error.update(($error) => {
-        $error = undefined;
-        return $error;
-      });
+      error.set(undefined);
     } catch (err) {
       error.update(($error) => {
-        $error = { error: err, command };
+        $error = { error: err, item: command };
         return $error;
       });
+
+      if (command.onError) {
+        command.onError({ error: err, command, source, state: undefined });
+      }
+      else {
+        log?.('error', err);
+      }
     }
 
     history.update(($history) => {
       $history.unshift(command.id);
       return $history;
     });
-    selectedIdx.update(($selectedIdx) => {
-      $selectedIdx = undefined;
-      return $selectedIdx;
-    });
-    selectedId.update(($selectedId) => {
-      $selectedId = undefined;
-      return $selectedId;
-    });
+    selectedIdx.set(undefined);
+    selectedId.set(undefined);
     clearInput();
     closePalette();
   }
@@ -306,10 +315,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     else {
       try {
         await goto(page.url);
-        error.update(($error) => {
-          $error = undefined;
-          return $error;
-        });
+        error.set(undefined);
       } catch (err) {
         error.update(($error) => {
           $error = { error: err, item: page };
@@ -367,7 +373,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
   }
 
   function registerCommand(
-    command: OneOrMany<HCommandDefinition> | OneOrMany<HyperCommand>,
+    command: OneOrMany<HyperCommandDefinition> | OneOrMany<HyperCommand>,
     override: boolean = false,
   ) {
     const unsafeCommands = Array.isArray(command) ? command : [command];
@@ -400,7 +406,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         registerCommandShortcuts(newCommand);
 
         cleanupCommandShortcuts(oldCommand);
-        oldCommand.unregisterCallback?.({ command: oldCommand, hpState: undefined });
+        oldCommand.onUnregister?.(oldCommand);
         removedCommands.push(oldCommand);
       }
 
@@ -410,7 +416,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     for (const newCommand of newCommands) {
       const _command = {
         item: newCommand,
-        // action: hyperItemAction,
         action: () => { console.log('action', newCommand); },
       };
       _allCommands.push(_command);
@@ -438,7 +443,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
           const [oldCommand] = $commands.splice(index, 1);
           cleanupCommandShortcuts(oldCommand);
-          oldCommand.unregisterCallback?.({ command: oldCommand, hpState: undefined });
+          oldCommand.onUnregister?.(oldCommand);
           const idx = _allCommands.findIndex((result) => result.item.id === oldCommand.id);
           if (idx >= 0) {
             _allCommands.splice(idx, 1);
@@ -482,7 +487,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
         const [oldCommand] = $commands.splice(index, 1);
 
-        oldCommand.unregisterCallback?.({ command: oldCommand, hpState: undefined });
+        oldCommand.onUnregister?.(oldCommand);
         removedCommands.push(oldCommand);
       }
 
@@ -529,7 +534,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
         newPages.push(newPage);
         const [oldPage] = $pages.splice(existingIndex, 1, newPage);
-        // oldPage.unregisterCallback?.({ command: oldPage, hcState: undefined });
         removedPages.push(oldPage);
       }
 
@@ -539,7 +543,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     for (const newPage of newPages) {
       const _page = {
         item: newPage,
-        // action: hyperItemAction,
         action: () => { console.log('action', newPage); },
       };
       _allPages.push(_page);
@@ -566,7 +569,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
           }
 
           const [oldCommand] = $pages.splice(index, 1);
-          // oldCommand.unregisterCallback?.({ command: oldCommand, hcState: undefined });
           const idx = _allPages.findIndex((result) => result.item.id === oldCommand.id);
           if (idx >= 0) {
             _allPages.splice(idx, 1);
@@ -609,8 +611,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         }
 
         const [oldPage] = $pages.splice(index, 1);
-
-        // oldPage.unregisterCallback?.({ command: oldPage, hcState: undefined });
         removedPages.push(oldPage);
       }
 
@@ -627,34 +627,45 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
   }
 
   function searchFn(pattern: string) {
+    let newResults: HyperCommand[] | HyperPage[] = [];
     if (pattern === '') {
       if (_emptyMode === RESULTS_EMPTY_MODE.ALL) {
         _currentResults.update(($state) => {
           $state = _currentAllItems.map((result) => result.item) as HyperCommand[] | HyperPage[];
+          newResults = $state;
           return $state;
         });
-        return;
       } else if (_emptyMode === RESULTS_EMPTY_MODE.HISTORY) {
         _currentResults.update(($state) => {
           const ids = get(history);
           $state = _currentAllItems
             .filter((result) => ids.includes(result.item.id))
             .map((result) => result.item) as HyperCommand[] | HyperPage[];
+          newResults = $state;
           return $state;
         });
-        return;
       } else if (_emptyMode === RESULTS_EMPTY_MODE.NONE) {
         _currentResults.update(() => {
+          newResults = [];
           return [];
         });
-        return;
       }
     }
+    else {
+      const searchResult = _currentSearcher.search(pattern);
+      newResults = searchResult.map((cmd) => cmd.item) as HyperCommand[] | HyperPage[];
 
-    const searchResult = _currentSearcher.search(pattern);
-    const commandResults = searchResult.map((cmd) => cmd.item) as HyperCommand[] | HyperPage[];
+      _currentResults.set(newResults);
+    }
 
-    _currentResults.set(commandResults);
+    if (newResults.length === 0) {
+      selectedIdx.set(undefined);
+      selectedId.set(undefined);
+      return;
+    }
+
+    selectedIdx.set(0);
+    selectedId.set(newResults[0].id);
   }
 
   function nextResult() {
@@ -717,8 +728,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
   function registerDefaultShortcuts() {
     const cleanupShortcuts: (() => void)[] = [];
-    const cleanupOpenPalette1 = addKeyBinding(window, '$mod+Shift+P', shortCutOpenCommandPalette);
-    const cleanupOpenPalette2 = addKeyBinding(window, '$mod+P', shortCutOpenPagePalette);
+    const cleanupOpenPalette1 = addKeyBinding(window, '$mod+Shift+P', shortcutOpenCommandPalette);
+    const cleanupOpenPalette2 = addKeyBinding(window, '$mod+P', shortcutOpenPagePalette);
     if (cleanupOpenPalette1) {
       cleanupShortcuts.push(cleanupOpenPalette1);
     }
@@ -800,7 +811,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         id: ids.searchForm,
       };
     },
-    action: (node:HTMLFormElement) => {
+    action: (node: HTMLFormElement) => {
       function onSubmit(event: SubmitEvent) {
         event.preventDefault();
         const $selectedIdx = get(selectedIdx);

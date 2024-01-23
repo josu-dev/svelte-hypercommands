@@ -2,7 +2,7 @@ import type { Action } from 'svelte/action';
 import type { Readable, Stores, StoresValues, Subscriber, Unsubscriber } from 'svelte/store';
 import { derived } from 'svelte/store';
 
-export function noop() {}
+export function noop() { }
 
 export function lightable<T>(value: T): Readable<T> {
   function subscribe(run: Subscriber<T>): Unsubscriber {
@@ -27,9 +27,9 @@ export const hiddenAction = <T extends Record<string, unknown>>(obj: T) => {
 
 type BuilderCallback<S extends Stores | undefined> = S extends Stores
   ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (values: StoresValues<S>) => Record<string, any> | ((...args: any[]) => Record<string, any>)
+  (values: StoresValues<S>) => Record<string, any> | ((...args: any[]) => Record<string, any>)
   : // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    () => Record<string, any> | ((...args: any[]) => Record<string, any>);
+  () => Record<string, any> | ((...args: any[]) => Record<string, any>);
 
 const isFunctionWithParams = (
   fn: unknown,
@@ -57,12 +57,12 @@ type BuilderStore<
 > = Readable<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ReturnType<R> extends (...args: any) => any
-    ? ((
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore - This is a valid type, but TS doesn't like it for some reason. TODO: Figure out why
-        ...args: Parameters<ReturnType<R>>
-      ) => ReturnType<R> & { [K in `data-melt-${Name}`]: '' } & { action: A }) & { action: A }
-    : ReturnType<R> & { [K in `data-melt-${Name}`]: '' }
+  ? ((
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore - This is a valid type, but TS doesn't like it for some reason. TODO: Figure out why
+    ...args: Parameters<ReturnType<R>>
+  ) => ReturnType<R> & { [K in `data-melt-${Name}`]: '' } & { action: A; }) & { action: A; }
+  : ReturnType<R> & { [K in `data-melt-${Name}`]: '' }
 >;
 
 export function builder<
@@ -128,7 +128,7 @@ export function builder<
   const actionFn = (action ??
     (() => {
       /** noop */
-    })) as A & { subscribe: typeof derivedStore.subscribe };
+    })) as A & { subscribe: typeof derivedStore.subscribe; };
   actionFn.subscribe = derivedStore.subscribe;
 
   return actionFn;
