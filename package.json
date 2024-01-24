@@ -1,7 +1,16 @@
 {
   "name": "svelte-hypercommands",
-  "version": "0.0.6",
+  "version": "0.0.7",
+  "description": "A headless Command Palette for hyper commands in your SvelteKit app",
+  "keywords": [
+    "sveltekit",
+    "svelte",
+    "command palette",
+    "commands",
+    "keybindings"
+  ],
   "license": "MIT",
+  "bugs": "https://github.com/J-Josu/svelte-hypercommands/issues",
   "repository": {
     "type": "git",
     "url": "https://github.com/J-Josu/svelte-hypercommands"
@@ -16,6 +25,11 @@
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "lint": "eslint ."
   },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.spec.*"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -36,11 +50,8 @@
       ]
     }
   },
-  "files": [
-    "dist",
-    "!dist/**/*.test.*",
-    "!dist/**/*.spec.*"
-  ],
+  "svelte": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "peerDependencies": {
     "svelte": "^4.0.0",
     "@sveltejs/kit": "^1.27.0"
@@ -62,7 +73,5 @@
     "typescript": "^5.0.0",
     "vite": "^5.0.11"
   },
-  "svelte": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "type": "module"
 }

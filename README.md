@@ -1,6 +1,6 @@
 # Hypercommands
 
-**svelte-hypercommands** is a dependancy free Headless Command Palette for SvelteKit with a default component implementation.
+**svelte-hypercommands** is a dependancy free Headless Command Palette for [SvelteKit][svelte-kit] with a default component implementation.
 
 It originally started as a rework of [Svelte-Command-Palette][svelte-command-palette] with the main objective of making it fully headless for enabling complete customization and extensibility as well as adding some extra features like dynamic commands and support for page navigation. It ended up being a complete rewrite with a different approach and a different API.
 
@@ -186,16 +186,11 @@ The `states` object contains the stores that can be used to subscribe to the sta
 The `helpers` object contains the exposed functions that can be used to interact with the internal state of the Command Palette.
 
 
-## License
-
-[MIT](./LICENSE)
-
-
 ## Contributing
 
 Contributions are welcome and appreciated.
 
-If you have any suggestions, feedback or issues, please [open an issue](./issues/new) on this repository or submit a pull request.
+If you have any suggestions, feedback or issues, please [open an issue][issues] or submit a pull request.
 
 
 ## Acknowledgements
@@ -205,6 +200,13 @@ If you have any suggestions, feedback or issues, please [open an issue](./issues
 - [Tinykeys][tinykeys]
 
 
+## License
+
+[MIT](./LICENSE)
+
+
+[svelte-kit]: https://github.com/sveltejs/kit
 [svelte-command-palette]: https://github.com/rohitpotato/svelte-command-palette
 [melt-ui]: https://github.com/melt-ui/melt-ui
 [tinykeys]: https://github.com/jamiebuilds/tinykeys
+[issues]: https://github.com/J-Josu/svelte-hypercommands/issues
