@@ -90,10 +90,10 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
   const ids = {
     container: randomID(),
-    label: randomID(),
+    panel: randomID(),
     searchForm: randomID(),
+    searchLabel: randomID(),
     searchInput: randomID(),
-    resultList: randomID(),
   };
 
   let _emptyMode: ResultsEmptyMode = defaults.emptyMode;
@@ -416,7 +416,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     for (const newCommand of newCommands) {
       const _command = {
         item: newCommand,
-        action: () => { console.log('action', newCommand); },
+        action: () => { console.info('action', newCommand); },
       };
       _allCommands.push(_command);
       _commandSearcher.add(_command);
@@ -486,7 +486,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         }
 
         const [oldCommand] = $commands.splice(index, 1);
-
+        cleanupCommandShortcuts(oldCommand);
         oldCommand.onUnregister?.(oldCommand);
         removedCommands.push(oldCommand);
       }
@@ -543,7 +543,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     for (const newPage of newPages) {
       const _page = {
         item: newPage,
-        action: () => { console.log('action', newPage); },
+        action: () => { console.info('action', newPage); },
       };
       _allPages.push(_page);
       _pageSearcher.add(_page);
@@ -776,7 +776,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     },
   });
 
-  const builderPalette = builder(elementDataName('container'), {
+  const builderPalette = builder(elementDataName('palette'), {
     stores: [],
     returned: () => {
       return {
@@ -786,6 +786,22 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     action: (node) => {
       registerDefaultShortcuts();
 
+      return {
+        destroy() {
+          cleanupDefaultsShorcuts();
+        },
+      };
+    },
+  });
+
+  const builderPanel = builder(elementDataName('panel'), {
+    stores: [],
+    returned: () => {
+      return {
+        id: ids.panel,
+      };
+    },
+    action: (node) => {
       // Type 'pointerdown' has the least amount of delay between the event and the action
       const cleanupClickOutside = useClickOutside(node, {
         type: "pointerdown",
@@ -794,10 +810,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         },
       });
 
-
       return {
         destroy() {
-          cleanupDefaultsShorcuts();
           cleanupClickOutside.destroy();
         },
       };
@@ -855,7 +869,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     stores: [],
     returned: () => {
       return {
-        id: ids.label,
+        id: ids.searchLabel,
         for: ids.searchInput,
         style: screenReaderStyles,
       };
@@ -869,7 +883,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         id: ids.searchInput,
         type: 'text',
         placeholder: 'Search for commands...',
-        'aria-labelledby': ids.label,
+        'aria-labelledby': ids.searchLabel,
       };
     },
     action: (node) => {
@@ -1035,7 +1049,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         node.dataset['selected'] = 'true';
         node.scrollIntoView({ behavior: 'instant', 'block': 'end', inline: 'nearest' });
       });
-
+      
       return {
         destroy() {
           node.removeEventListener('click', onClick);
@@ -1049,6 +1063,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     elements: {
       portal: builderPortal,
       palette: builderPalette,
+      panel: builderPanel,
       form: builderForm,
       label: builderLabel,
       input: builderInput,

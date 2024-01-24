@@ -10,7 +10,7 @@
       description: 'This command was dynamically added to the command palette',
       shortcut: '$mod+1',
       onAction: () => {
-        console.log('Dynamic command was executed on home page');
+        console.info('Dynamic command was executed on home page');
       },
     },
     {
@@ -38,7 +38,7 @@
       description: 'This command was dynamically added to the command palette',
       shortcut: '$mod+4',
       onAction: () => {
-        console.log('Dynamic command was executed on home page');
+        console.info('Dynamic command was executed on home page');
       },
     },
     {

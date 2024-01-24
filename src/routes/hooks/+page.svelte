@@ -23,7 +23,7 @@
           return true;
         },
         onAction: () => {
-          console.log('This message should appear');
+          console.info('This message should appear');
         },
       },
       {
@@ -42,7 +42,7 @@
         name: 'This command will log when unregistered',
         description: 'This command was dynamically added to the command palette',
         onUnregister: (command) => {
-          console.log('Unregistered command from /hooks', command);
+          console.info('Unregistered command from /hooks', command);
         },
       },
     ]);

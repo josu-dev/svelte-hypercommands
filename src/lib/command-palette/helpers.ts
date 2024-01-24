@@ -4,10 +4,6 @@ import { PALETTE_ITEM } from './enums.js';
 import type { HyperCommand, HyperCommandDefinition, HyperPage, HyperPageDefinition } from './types.js';
 
 
-export function isHTMLElement(el: unknown): el is HTMLElement {
-  return el instanceof HTMLElement;
-}
-
 export function noopCommandRequest(): void { }
 
 export function noopCommandAction(): void { }

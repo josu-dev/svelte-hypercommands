@@ -10,7 +10,7 @@
       description: 'This command was dynamically added to the command palette',
       shortcut: '$mod+1',
       onAction: ({ source }) => {
-        console.log('Dynamic command was executed', source);
+        console.info('Dynamic command was executed', source);
       },
     },
     {

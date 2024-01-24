@@ -10,16 +10,17 @@
 
 <script lang="ts">
   import { PALETTE_MODE } from '$lib/command-palette/enums.js';
+  import type { HyperCommand, HyperPage } from '$lib/command-palette/types.js';
   import { removeAllKeyBindings } from '$lib/keyboard/keystroke.js';
-  import { isBrowser } from '$lib/utils/functions.js';
+  import { isBrowser, shortcutToKbd } from '$lib/utils/functions.js';
   import { onMount } from 'svelte';
 
-  export let commands: import('$lib/command-palette/types.js').HyperCommand[] = [];
-  export let pages: import('$lib/command-palette/types.js').HyperPage[] = [];
+  export let commands: HyperCommand[] = [];
+  export let pages: HyperPage[] = [];
   export let placeholder = 'Search for commands...';
   export let a11yInputLabel = 'Palette Search';
 
-  const { portal, palette, form, label, input, page, command } = elements;
+  const { portal, palette, panel, form, label, input, page, command } = elements;
   const { open, paletteMode, matchingCommands, matchingPages } = states;
 
   let unregisterCommands: () => void;
@@ -37,125 +38,119 @@
   onMount(() => {
     // TODO: This should be done in a better way?
 
-    // ensure that all keybindings are removed (in case of hot reload)
-    removeAllKeyBindings(window);
-    helpers.registerDefaultShortcuts();
-
-    // helpers.search('');
-
     return () => {
       unregisterCommands?.();
       unregisterPages?.();
+      // ensure that all keybindings are removed in case of hot reload?
+      removeAllKeyBindings(window);
     };
   });
 </script>
 
-<div class="palette-portal" use:portal hidden>
-  <!-- {#if $open || true} -->
-  {#if $open}
-    <div {...$palette} use:palette class="palette-container">
-      <form {...$form} use:form class="palette-search">
-        <!-- svelte-ignore a11y-label-has-associated-control - $label has the missing for attribute -->
-        <label {...$label} use:label>{a11yInputLabel}</label>
-        <input {...$input} use:input {placeholder} class="search-input" />
-      </form>
-      <ul class="palette-results">
-        {#if $paletteMode === PALETTE_MODE.PAGES}
-          {#each $matchingPages as p (p.id)}
-            <li class="result" {...$page} use:page={p} title={p.description}>
-              <div class="result-container">
-                <div class="result-page-icon">
-                  {#if p.external}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      class="lucide lucide-globe"
-                      ><circle cx="12" cy="12" r="10" /><path
-                        d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"
-                      /><path d="M2 12h20" /></svg
-                    >
-                  {:else}
-                    <!-- <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      class="lucide lucide-map-pin"
-                      ><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle
-                        cx="12"
-                        cy="10"
-                        r="3"
-                      /></svg
-                    > -->
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      class="lucide lucide-home"
-                      ><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline
-                        points="9 22 9 12 15 12 15 22"
-                      /></svg
-                    >
-                  {/if}
+<div class="palette-portal" use:portal>
+  <div class="palette-container" {...$palette} use:palette>
+    {#if $open}
+      <div {...$panel} use:panel class="palette-panel">
+        <form {...$form} use:form class="palette-search">
+          <!-- svelte-ignore a11y-label-has-associated-control - $label has the missing for attribute -->
+          <label {...$label} use:label>{a11yInputLabel}</label>
+          <input {...$input} use:input {placeholder} class="search-input" />
+        </form>
+        <ul class="palette-results">
+          {#if $paletteMode === PALETTE_MODE.PAGES}
+            {#each $matchingPages as p (p.id)}
+              <li class="result" {...$page} use:page={p}>
+                <div class="result-container">
+                  <div class="result-page-icon">
+                    {#if p.external}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="lucide lucide-globe"
+                        ><circle cx="12" cy="12" r="10" /><path
+                          d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"
+                        /><path d="M2 12h20" /></svg
+                      >
+                    {:else}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="lucide lucide-home"
+                        ><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline
+                          points="9 22 9 12 15 12 15 22"
+                        /></svg
+                      >
+                    {/if}
+                  </div>
+                  <div class="result-label" title={p.description}>
+                    <span class="result-label-name">{p.name}</span>{#if p.name !== p.url}
+                      <span class="result-page-url">{p.url.replace(/^https?:\/\//, '')}</span>
+                    {/if}
+                  </div>
                 </div>
-                <div class="result-label">
-                  <span class="result-label-name">{p.name}</span>{#if p.name !== p.url}
-                    <span class="result-page-url">{p.url.replace(/^https?:\/\//, '')}</span>
-                  {/if}
+              </li>
+            {/each}
+            {#if $matchingPages.length === 0}
+              <li class="result">
+                <div class="result-name">No pages found</div>
+              </li>
+            {/if}
+          {:else}
+            {#each $matchingCommands as c (c.id)}
+              <li class="result" {...$command} use:command={c}>
+                <div class="result-container">
+                  <div class="result-label" title={c.description}>
+                    {#if c.category}
+                      <span class="result-label-name">{c.category}: {c.name}</span>
+                    {:else}
+                      <span class="result-label-name">{c.name}</span>
+                    {/if}
+                  </div>
+                  <div class="keybindings">
+                    {#each c.shortcut as s (s)}
+                      <kbd class="keybinding">
+                        {#each shortcutToKbd(s) as kbd (kbd)}
+                          <kbd class="keybinding-key">{kbd}</kbd>
+                          <span class="keybinding-key-separator">+</span>
+                        {/each}
+                      </kbd>
+                    {/each}
+                  </div>
                 </div>
-              </div>
-            </li>
-          {/each}
-          {#if $matchingPages.length === 0}
-            <li class="result">
-              <div class="result-name">No pages found</div>
-            </li>
+              </li>
+            {/each}
+            {#if $matchingCommands.length === 0}
+              <li class="result">
+                <div class="result-name">No commands found</div>
+              </li>
+            {/if}
           {/if}
-        {:else}
-          {#each $matchingCommands as c (c.id)}
-            <li class="result" {...$command} use:command={c}>
-              <div class="result-name">{c.name}</div>
-              <div class="result-description">{c.description}</div>
-            </li>
-          {/each}
-          {#if $matchingCommands.length === 0}
-            <li class="result">
-              <div class="result-name">No commands found</div>
-            </li>
-          {/if}
-        {/if}
-      </ul>
-    </div>
-  {/if}
+        </ul>
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style>
-  /* .palette-portal {
-    display: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 10;
-  } */
-
   .palette-container {
+    display: contents;
+  }
+
+  .palette-panel {
     position: fixed;
     top: 10vh;
     left: 50%;
@@ -167,7 +162,7 @@
     max-width: 640px;
     max-height: 80vh;
     pointer-events: auto;
-    color: white;
+    color: hsl(240, 6%, 85%);
     border-style: solid;
     border-width: 1px;
     border-color: rgb(48, 48, 54);
@@ -277,6 +272,7 @@
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
+    text-wrap: nowrap;
   }
 
   .result-page-icon {
@@ -292,15 +288,16 @@
 
   .result-label {
     font-weight: 400;
-    color: rgb(244 244 245);
+    color: hsl(240, 5%, 90%);
     font-size: 1rem;
     line-height: 1.5rem;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex: 1;
   }
   .result-label-name {
     font-weight: 400;
-    color: rgb(244 244 245);
+    color: hsl(240, 5%, 90%);
     font-size: 1rem;
     line-height: 1.5rem;
     padding-right: 6px;
@@ -312,10 +309,46 @@
     opacity: 0.75;
   }
 
-  .result-description {
-    color: rgb(228 228 231);
-    font-weight: 300;
-    font-size: 0.875rem;
-    line-height: 1.25rem;
+  .keybindings {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    line-height: 12px;
+  }
+
+  .keybinding {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .keybindings kbd {
+    font-family: inherit;
+  }
+
+  .keybinding-key {
+    background-color: rgb(49, 49, 49);
+    border-color: hsl(0, 0%, 25%);
+    border-bottom-color: hsl(0, 0%, 35%);
+    box-shadow: inset 0 -1px 0 hsl(206, 100%, 20%);
+    /* color: whitesmoke; */
+    display: inline-block;
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 3px;
+    vertical-align: middle;
+    font-size: 11px;
+    padding: 3px 5px;
+    margin: 0 2px;
+  }
+
+  .result[data-selected] .keybinding-key {
+    box-shadow: inset 0 -1px 0 hsl(206, 100%, 40%);
+  }
+
+  .keybinding-key-separator {
+    display: inline-block;
+  }
+  .keybinding-key-separator:last-child {
+    display: none;
   }
 </style>

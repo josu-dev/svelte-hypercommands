@@ -79,10 +79,10 @@ export type CommandUnregisterHook = (command: HyperCommand) => MaybePromise<void
 
 export type HyperCommandDefinition = {
   id?: HyperId;
+  category?: string;
   name: string;
   description?: string;
   keywords?: string[];
-  category?: string;
   shortcut?: string | string[];
   onRequest?: CommandRequestHook;
   onAction?: CommandActionHook;
@@ -93,11 +93,11 @@ export type HyperCommandDefinition = {
 export type HyperCommand = {
   type: HyperCommandType;
   id: HyperId;
+  category: string;
   name: string;
   description: string;
-  category: string;
   keywords: string[];
-  shortcut?: string[];
+  shortcut: string[];
   onRequest: CommandRequestHook;
   onAction: CommandActionHook;
   onError?: CommandErrorHook;
@@ -106,17 +106,17 @@ export type HyperCommand = {
 
 export type HyperPageDefinition = {
   name: string;
-  description?: string;
   url: string;
+  description?: string;
 };
 
 export type HyperPage = {
   type: HyperPageType;
   id: string;
-  name: string;
-  description: string;
-  url: string;
   external: boolean;
+  name: string;
+  url: string;
+  description: string;
 };
 
 export type HyperItem = HyperCommand | HyperPage;
