@@ -1,16 +1,16 @@
 <script lang="ts" context="module">
-  import { createCommandPalette } from '$lib/command-palette/create.js';
+  import { createCommandPalette } from '$lib/command_palette/create.js';
 
-  const state = createCommandPalette();
+    const state = createCommandPalette();
 
-  export const elements = state.elements;
-  export const states = state.states;
-  export const helpers = state.helpers;
+    export const elements = state.elements;
+    export const states = state.states;
+    export const helpers = state.helpers;
 </script>
 
 <script lang="ts">
-  import { PALETTE_MODE } from '$lib/command-palette/enums.js';
-  import type { HyperCommand, HyperPage } from '$lib/command-palette/types.js';
+  import { PALETTE_MODE } from '$lib/command_palette/enums.js';
+  import type { HyperCommand, HyperPage } from '$lib/command_palette/types.js';
   import { removeAllKeyBindings } from '$lib/keyboard/keystroke.js';
   import { isBrowser, shortcutToKbd } from '$lib/utils/functions.js';
   import { onMount } from 'svelte';

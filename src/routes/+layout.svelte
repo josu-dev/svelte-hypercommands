@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { appRoutesAsPages, defineCommand } from '$lib/command-palette/helpers.js';
+  import { appRoutesAsPages, defineCommand } from '$lib/command_palette/helpers.js';
   import CommandPalette from '$lib/default/CommandPalette.svelte';
   import '../app.css';
 

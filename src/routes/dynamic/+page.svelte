@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { defineCommand } from '$lib/command-palette/helpers.js';
+  import { defineCommand } from '$lib/command_palette/helpers.js';
   import { helpers, states } from '$lib/default/CommandPalette.svelte';
   import { onDestroy } from 'svelte';
 

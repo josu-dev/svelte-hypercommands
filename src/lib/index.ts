@@ -1,2 +1,2 @@
-export { createCommandPalette } from './command-palette/create.js';
-export { appRoutesAsPages, defineCommand, definePage, getAppRoutes } from './command-palette/helpers.js';
+export { createCommandPalette } from './command_palette/create.js';
+export { appRoutesAsPages, defineCommand, definePage, getAppRoutes } from './command_palette/helpers.js';
