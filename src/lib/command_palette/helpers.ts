@@ -69,16 +69,23 @@ export function getAppRoutes(): { name: string; path: string; }[] {
   return routes;
 }
 
+const dinamicRouteRegex = /\/\[[^\]]+\]/i;
+
 export function appRoutesAsPages({ rootName = 'root' } = { rootName: 'root' }): HyperPage[] {
   const modules = import.meta.glob('/src/**/+page.svelte');
   const pages: HyperPage[] = [];
   for (const path in modules) {
-    const url = path.slice(11, path.length > 24 ? -13 : -12);
+    if (dinamicRouteRegex.test(path)) {
+      continue;
+    }
+
+    const rawURL = path.slice(11, path.length > 24 ? -13 : -12);
+    const url = rawURL.replaceAll(/\([^)]+\)\//ig, '');
     const name = url.split('/').pop() || rootName;
     pages.push(normalizePage({
       name: name,
       url: url,
-      description: ""
+      description: '',
     }));
   }
   return pages;

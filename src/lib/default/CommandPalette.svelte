@@ -1,11 +1,11 @@
 <script lang="ts" context="module">
   import { createCommandPalette } from '$lib/command_palette/create.js';
 
-    const state = createCommandPalette();
+  const state = createCommandPalette();
 
-    export const elements = state.elements;
-    export const states = state.states;
-    export const helpers = state.helpers;
+  export const elements = state.elements;
+  export const states = state.states;
+  export const helpers = state.helpers;
 </script>
 
 <script lang="ts">
@@ -155,6 +155,7 @@
     top: 10vh;
     left: 50%;
     right: 50%;
+    z-index: 10;
     transform: translate(-50%, 0);
     display: flex;
     flex-direction: column;
