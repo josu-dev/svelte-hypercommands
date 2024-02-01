@@ -1,6 +1,6 @@
 {
   "name": "svelte-hypercommands",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "A headless Command Palette for hyper commands in your SvelteKit app",
   "keywords": [
     "sveltekit",
@@ -20,7 +20,7 @@
     "build": "vite build && npm run package",
     "preview": "vite preview",
     "package": "svelte-kit sync && svelte-package && publint",
-    "prepublishOnly": "npm run package",
+    "prepublishOnly": "npm run check && npm run package",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "lint": "eslint ."

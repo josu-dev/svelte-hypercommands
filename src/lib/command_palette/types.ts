@@ -1,3 +1,4 @@
+import type { RegisteredHyperCommandMeta } from '$lib/index.js';
 import type { MaybePromise, RecordToWritables } from '$lib/utils/types.js';
 import type { Action } from 'svelte/action';
 import type { Writable } from 'svelte/store';
@@ -77,6 +78,8 @@ export type CommandErrorHook = (args: CommandActionArgs & { error: unknown; }) =
 
 export type CommandUnregisterHook = (command: HyperCommand) => MaybePromise<void>;
 
+export type CommandMeta = RegisteredHyperCommandMeta;
+
 export type HyperCommandDefinition = {
   id?: HyperId;
   category?: string;
@@ -88,6 +91,7 @@ export type HyperCommandDefinition = {
   onAction?: CommandActionHook;
   onError?: CommandErrorHook;
   onUnregister?: CommandUnregisterHook;
+  meta?: CommandMeta;
 };
 
 export type HyperCommand = {
@@ -102,6 +106,7 @@ export type HyperCommand = {
   onAction: CommandActionHook;
   onError?: CommandErrorHook;
   onUnregister?: CommandUnregisterHook;
+  meta: CommandMeta;
 };
 
 export type HyperPageDefinition = {

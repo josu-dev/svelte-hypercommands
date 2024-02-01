@@ -21,6 +21,7 @@ export function normalizeCommand(command: HyperCommandDefinition): HyperCommand 
     onAction: command.onAction ?? noopCommandAction,
     onError: command.onError,
     onUnregister: command.onUnregister,
+    meta: command.meta ?? {},
   };
 }
 

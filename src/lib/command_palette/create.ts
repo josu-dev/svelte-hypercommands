@@ -882,6 +882,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       return {
         id: ids.searchInput,
         type: 'text',
+        autocomplete: 'off',
+        spellcheck: false,
         placeholder: 'Search for commands...',
         'aria-labelledby': ids.searchLabel,
       };
