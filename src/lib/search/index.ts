@@ -71,6 +71,8 @@ export class Searcher<
   TSource extends AnyRecord,
   T extends SearchableItem<TSource> = SearchableItem<TSource>,
 > {
+  static #AID = 0;
+
   #items: T[];
   #itemsFiltered: T[];
   #query: string;
@@ -104,7 +106,7 @@ export class Searcher<
       this.#sourceItems.push(item);
       this.#items.push({
         item,
-        AID: this.#sourceItems.length - 1,
+        AID: Searcher.#AID++,
         searchableText: translateToSafeASCII(this.#mapper(item)),
       } as T);
     }
@@ -124,7 +126,7 @@ export class Searcher<
         removedItems.push(item.item);
       }
     }
-    ''.normalize();
+
     if (this.#filterOnUpdate) {
       this.search(this.#query);
     }
@@ -222,5 +224,17 @@ export class Searcher<
     this.#mapper = mapper ?? this.#mapper;
     this.#filterOnUpdate = searchOnUpdate ?? this.#filterOnUpdate;
     this.#emptySearchMode = onEmptyQuery ?? this.#emptySearchMode;
+  }
+
+  sortItems(comparator: (a: T, b: T) => number): void {
+    this.#items.sort(comparator);
+    this.#sourceItems.length = 0;
+    for (let i = 0; i < this.#items.length; i++) {
+      this.#sourceItems.push(this.#items[i].item);
+    }
+
+    if (this.#filterOnUpdate) {
+      this.search(this.#query);
+    }
   }
 }

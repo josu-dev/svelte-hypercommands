@@ -13,6 +13,8 @@ export type PaletteMode = "PAGES" | "COMMANDS";
 
 export type ResultsEmptyMode = 'ALL' | 'HISTORY' | 'NONE';
 
+export type SortMode = 'ASC' | 'DESC' | 'NONE';
+
 export type ChangeFn<T> = (args: { curr: T; next: T; }) => T;
 
 export type CreateCommandPaletteOptions = {
@@ -28,13 +30,8 @@ export type CreateCommandPaletteOptions = {
   emptyMode?: ResultsEmptyMode;
   portal?: HTMLElement | string | false | undefined;
   pages?: HyperPage[];
+  sortPages?: SortMode;
 };
-
-// export type CommandPalette = BuilderReturn<typeof createCommandPalette>;
-// export type CommandPaletteElements = CommandPalette['elements'];
-// export type CommandPaletteOptions = CommandPalette['options'];
-// export type CommandPaletteStates = CommandPalette['states'];
-
 
 export type HyperPaletteState = undefined | Writable<any>;
 
@@ -110,18 +107,20 @@ export type HyperCommand = {
 };
 
 export type HyperPageDefinition = {
-  name: string;
-  url: string;
+  id?: string;
+  name?: string;
   description?: string;
+  url: string;
 };
 
 export type HyperPage = {
   type: HyperPageType;
   id: string;
-  external: boolean;
   name: string;
-  url: string;
   description: string;
+  external: boolean;
+  url: string;
+  urlHostPathname: string;
 };
 
 export type HyperItem = HyperCommand | HyperPage;

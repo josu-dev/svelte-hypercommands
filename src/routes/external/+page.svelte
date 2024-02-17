@@ -19,6 +19,19 @@
         name: 'Google',
         description: 'The link to Google',
       },
+      {
+        url: 'http://localhost:5173/external?page=external#id',
+        name: 'External Page',
+        description: 'The link to this page',
+      },
+      {
+        url: '///weird_local_page?unusual=param',
+        description: 'The link to this page',
+      },
+      {
+        url: '/ending//slash///',
+        description: 'The link to this page',
+      },
     ]);
 
     return pagesCleanup;

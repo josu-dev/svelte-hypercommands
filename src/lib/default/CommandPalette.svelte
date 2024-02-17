@@ -98,7 +98,7 @@
                   </div>
                   <div class="result-label" title={p.description}>
                     <span class="result-label-name">{p.name}</span>{#if p.name !== p.url}
-                      <span class="result-page-url">{p.url.replace(/^https?:\/\//, '')}</span>
+                      <span class="result-page-url">{p.urlHostPathname}</span>
                     {/if}
                   </div>
                 </div>

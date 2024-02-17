@@ -8,7 +8,7 @@ import type { OneOrMany } from '$lib/utils/types.js';
 import { tick } from 'svelte';
 import { get, type Writable } from 'svelte/store';
 import { builder } from './builder.js';
-import { PALETTE_ITEM, PALETTE_MODE, RESULTS_EMPTY_MODE } from './enums.js';
+import { PALETTE_ITEM, PALETTE_MODE, RESULTS_EMPTY_MODE, SORT_MODE } from './enums.js';
 import { DuplicatedIDError } from './errors.js';
 import { normalizeCommand, normalizePage } from './helpers.js';
 import type {
@@ -24,7 +24,8 @@ import type {
   InternalItem,
   PageMatcher,
   PaletteMode,
-  ResultsEmptyMode
+  ResultsEmptyMode,
+  SortMode
 } from './types.js';
 
 const dataKey = {
@@ -49,7 +50,8 @@ const defaults = {
   selectedId: undefined,
   emptyMode: RESULTS_EMPTY_MODE.ALL,
   portal: false as const,
-  pages: []
+  pages: [],
+  sortPages: SORT_MODE.ASC,
 };
 
 const screenReaderStyles = `
@@ -86,6 +88,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     selectedIdx,
     portal: portalTarget,
     pages,
+    sortPages,
   } = _options;
 
   const ids = {
@@ -97,6 +100,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
   };
 
   let _emptyMode: ResultsEmptyMode = defaults.emptyMode;
+
+  let _pageSortMode = get(sortPages);
 
   let _inputElement: HTMLInputElement | null = null;
 
@@ -113,15 +118,16 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
   });
 
   const _allPages: InternalItem<HyperPage>[] = [];
+  const _allPagesSorted: InternalItem<HyperPage>[] = [];
 
   const _pageSearcher = new Searcher<InternalItem<HyperPage>>({
-    mapper: (item) => item.item.name + item.item.url + item.item.description,
+    mapper: (item) => item.item.urlHostPathname,
   });
 
   const commandResults = writableWithValue<HyperCommand[]>([]);
   const pageResults = writableWithValue<HyperPage[]>([]);
 
-  let _currentAllItems: InternalItem<HyperCommand>[] | InternalItem<HyperPage>[] = _allPages;
+  let _currentAllItems: InternalItem<HyperCommand>[] | InternalItem<HyperPage>[] = _allPagesSorted;
   let _currentSearcher: Searcher<InternalItem<HyperCommand>> | Searcher<InternalItem<HyperPage>> = _pageSearcher;
   let _currentResults: Writable<HyperCommand[] | HyperPage[]> = pageResults;
 
@@ -187,7 +193,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
   function shortcutOpenPagePalette(event: KeyboardEvent) {
     event.preventDefault();
 
-    _currentAllItems = _allPages;
+    _currentAllItems = _allPagesSorted;
     _currentSearcher = _pageSearcher;
     _currentResults = pageResults;
 
@@ -211,9 +217,39 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     });
   }
 
+  function syncSortedPages() {
+    _allPagesSorted.length = 0;
+    for (const page of _allPages) {
+      _allPagesSorted.push(page);
+    }
+    sortPageItems(_pageSortMode);
+  }
+
+  function sortPageItems(mode: SortMode) {
+    if (mode === SORT_MODE.ASC) {
+      _allPagesSorted.sort((a, b) => a.item.urlHostPathname.localeCompare(b.item.urlHostPathname));
+      _pageSearcher.sortItems((a, b) => a.item.item.urlHostPathname.localeCompare(b.item.item.urlHostPathname));
+      return;
+    }
+    if (mode === SORT_MODE.DESC) {
+      _allPagesSorted.sort((a, b) => b.item.urlHostPathname.localeCompare(a.item.urlHostPathname));
+      _pageSearcher.sortItems((a, b) => b.item.item.urlHostPathname.localeCompare(a.item.item.urlHostPathname));
+      return;
+    }
+    _allPagesSorted.length = 0;
+    for (const page of _allPages) {
+      _allPagesSorted.push(page);
+    }
+    _pageSearcher.sortItems((a, b) => a.AID - b.AID);
+  }
+
   const _cleanupCallbacks: (() => void)[] = [
     emptyMode.subscribe(($emptyMode) => {
       _emptyMode = $emptyMode;
+    }),
+    sortPages.subscribe(($sortPages) => {
+      _pageSortMode = $sortPages;
+      sortPageItems($sortPages);
     }),
   ];
   if (open.unsubscribe) {
@@ -375,6 +411,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
   function registerCommand(
     command: OneOrMany<HyperCommandDefinition> | OneOrMany<HyperCommand>,
     override: boolean = false,
+    silentError: boolean = true,
   ) {
     const unsafeCommands = Array.isArray(command) ? command : [command];
 
@@ -396,6 +433,9 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         }
 
         if (!override) {
+          if (silentError) {
+            continue;
+          }
           throw new DuplicatedIDError(
             `ID ${newCommand.id} is not unique, shared between existing command ${$commands[existingIndex].name} and new command ${newCommand.name}`,
           );
@@ -516,8 +556,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     pages.update(($pages) => {
       for (const unsafePage of unsafePages) {
         const newPage = normalizePage(unsafePage);
-        const existingIndex = $pages.findIndex((command) => {
-          return command.id === newPage.id;
+        const existingIndex = $pages.findIndex(($page) => {
+          return $page.id === newPage.id;
         });
 
         if (existingIndex < 0) {
@@ -525,8 +565,10 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
           $pages.push(newPage);
           continue;
         }
-
-        if (!override && !silentError) {
+        if (!override) {
+          if (silentError) {
+            continue;
+          }
           throw new DuplicatedIDError(
             `ID ${newPage.id} is not unique, shared between existing page ${$pages[existingIndex].name} and new page ${newPage.name}`,
           );
@@ -556,6 +598,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
       _pageSearcher.remove((cmd) => cmd.item.id === removedPage.id);
     }
 
+    syncSortedPages();
+
     if (open.value) {
       updateResults(true);
     }
@@ -583,6 +627,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
         return $pages;
       });
+
+      syncSortedPages();
 
       if (open.value) {
         updateResults(true);
@@ -620,6 +666,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
       return $pages;
     });
+
+    syncSortedPages();
 
     if (open.value && paletteMode.value === PALETTE_MODE.PAGES) {
       updateResults(true);
@@ -905,7 +953,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         const newInputMode = rawValue.startsWith('>') ? PALETTE_MODE.COMMANDS : PALETTE_MODE.PAGES;
 
         if (newInputMode === PALETTE_MODE.PAGES) {
-          _currentAllItems = _allPages;
+          _currentAllItems = _allPagesSorted;
           _currentSearcher = _pageSearcher;
           _currentResults = pageResults;
         }
@@ -1051,7 +1099,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         node.dataset['selected'] = 'true';
         node.scrollIntoView({ behavior: 'instant', 'block': 'end', inline: 'nearest' });
       });
-      
+
       return {
         destroy() {
           node.removeEventListener('click', onClick);

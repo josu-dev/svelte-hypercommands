@@ -38,13 +38,33 @@ export function defineCommand(commands: OneOrMany<HyperCommandDefinition>): Hype
 
 
 export function normalizePage(page: HyperPageDefinition): HyperPage {
+  const external = !page.url.startsWith('/');
+  let cleanUrl = page.url.split('?')[0];
+  let urlHostPathname;
+
+  if (external) {
+    const _url = new URL(page.url);
+    urlHostPathname = _url.host + _url.pathname;
+  }
+  else {
+    cleanUrl = cleanUrl.replaceAll(/\/{2,}/g, '/');
+    urlHostPathname = cleanUrl;
+  }
+
+  if (urlHostPathname !== '/') {
+    urlHostPathname = urlHostPathname.replace(/\/{1,}$/, '');
+  }
+
+  const name = page.name ?? (cleanUrl.split('/').at(-1) || 'index');
+
   return {
     type: PALETTE_ITEM.PAGE,
     id: page.url,
-    name: page.name,
+    name: name,
     description: page.description ?? '',
     url: page.url,
-    external: !page.url.startsWith('/')
+    urlHostPathname: urlHostPathname,
+    external: external
   };
 }
 
