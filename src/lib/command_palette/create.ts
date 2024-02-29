@@ -1,5 +1,5 @@
 import { useClickOutside, usePortal } from '$lib/actions.js';
-import { hyperId, noopCleanup, stringAsHyperId, type HyperId, log } from '$lib/internal/index.js';
+import { hyperId, log, noopCleanup, stringAsHyperId, type HyperId } from '$lib/internal/index.js';
 import { addKeyBinding } from '$lib/keyboard/index.js';
 import { Searcher } from '$lib/search/index.js';
 import { exposeWritable, writableExposed, type WritableExposed } from '$lib/stores/index.js';
@@ -34,11 +34,6 @@ function elementDataName(name?: string): string {
     return name ? `palette-${name}` : 'palette';
 }
 
-const MODE_PREFIX = {
-    commands: '>',
-    pages: '',
-} as const;
-
 const DEFAULTS = {
     commands: [],
     commandsEmptyMode: RESULTS_EMPTY_MODE.ALL,
@@ -61,7 +56,7 @@ const DEFAULTS = {
     pagesSortMode: SORT_MODE.ASC,
     portal: undefined,
     resetOnOpen: true,
-    searchPlaceholder: 'Search pages... use > to search commands',
+    searchPlaceholder: `Search pages... use ${PALETTE_MODE_PREFIX.COMMANDS} to search commands...`,
     selectedEl: undefined,
     selectedId: undefined,
     selectedIdx: undefined,
@@ -100,12 +95,12 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     const inputText = writableExposed(safeOptions.defaultInputText);
     const paletteMode = writableExposed<PaletteMode>(PALETTE_MODE.PAGES);
 
-    const commands = writableExposed(safeOptions.commands);
+    const commands = writableExposed<HyperCommand[]>(safeOptions.commands);
     const commandsEmptyMode = writableExposed(safeOptions.commandsEmptyMode);
     const commandsHistory = writableExposed(safeOptions.commandsHistory);
     const commandsSortMode = writableExposed(safeOptions.commandsSortMode);
     const error = writableExposed<CommandPaletteOptions['error']>(safeOptions.error);
-    const pages = writableExposed(safeOptions.pages);
+    const pages = writableExposed<HyperPage[]>(safeOptions.pages);
     const pagesEmptyMode = writableExposed(safeOptions.pagesEmptyMode);
     const pagesHistory = writableExposed(safeOptions.pagesHistory);
     const pagesSortMode = writableExposed(safeOptions.pagesSortMode);
@@ -288,13 +283,16 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
     }
 
     function updateResults(force = false) {
-        const input = inputText.value;
+        let query = inputText.value;
 
-        if (!force && input === '') {
+        if (paletteMode.value === PALETTE_MODE.COMMANDS) {
+            query = query.slice(PALETTE_MODE_PREFIX.COMMANDS.length);
+        }
+        if (!force && !query) {
             return;
         }
 
-        searchFn(input);
+        searchFn(query);
     }
 
     async function executeCommand(command: HyperCommand, source: ItemRequestSource) {
@@ -473,11 +471,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
                     _searcherCommands.remove((doc) => doc.id === oldCommand.id);
                 }
 
-                const $inputText = get(inputText);
-                if ($inputText !== '') {
-                    searchFn($inputText);
-                }
-
                 return $commands;
             });
 
@@ -538,9 +531,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         pages.update(($pages) => {
             for (const unsafePage of unsafePages) {
                 const newPage = normalizePage(unsafePage);
-                const existingIndex = $pages.findIndex(($page) => {
-                    return $page.id === newPage.id;
-                });
+                const existingIndex = $pages.findIndex(($page) => $page.id === newPage.id);
 
                 if (existingIndex < 0) {
                     newPages.push(newPage);
@@ -596,11 +587,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
                         _allPages.splice(idx, 1);
                     }
                     _searcherPages.remove((doc) => doc.id === oldPage.id);
-                }
-
-                const $inputText = get(inputText);
-                if ($inputText !== '') {
-                    searchFn($inputText);
                 }
 
                 return $pages;
@@ -773,8 +759,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         }
     }
 
-    // Elements Builders
-
     const builderPortal = builder(elementDataName(), {
         stores: [portal],
         returned: ([$target]) => {
@@ -913,13 +897,10 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
             function onInput(event: Event) {
                 const el = event.target as HTMLInputElement;
                 const rawValue = el.value;
-                inputText.update(($inputText) => {
-                    $inputText = rawValue;
-                    return $inputText;
-                });
+                inputText.set(rawValue);
                 let query = rawValue;
 
-                const newInputMode = rawValue.startsWith('>') ? PALETTE_MODE.COMMANDS : PALETTE_MODE.PAGES;
+                const newInputMode = rawValue.startsWith(PALETTE_MODE_PREFIX.COMMANDS) ? PALETTE_MODE.COMMANDS : PALETTE_MODE.PAGES;
 
                 if (newInputMode === PALETTE_MODE.PAGES) {
                     _currentAllItems = _allPagesSorted;

@@ -247,7 +247,6 @@
     width: 10px;
   }
   .palette-results::-webkit-scrollbar-thumb {
-    /* width: 10px; */
     background-color: rgba(72 72 81 / 0.5);
   }
 
@@ -338,7 +337,6 @@
     border-color: hsl(0, 0%, 25%);
     border-bottom-color: hsl(0, 0%, 35%);
     box-shadow: inset 0 -1px 0 hsl(206, 100%, 20%);
-    /* color: whitesmoke; */
     display: inline-block;
     border-style: solid;
     border-width: 1px;

@@ -41,6 +41,7 @@
         id: 'dynamic-command-log-when-unregistered',
         name: 'This command will log when unregistered',
         description: 'This command was dynamically added to the command palette',
+        onAction: () => {},
         onUnregister: (command) => {
           console.info('Unregistered command from /hooks', command);
         },

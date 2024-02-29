@@ -1,7 +1,7 @@
 {
   "name": "svelte-hypercommands",
-  "version": "0.0.10",
-  "description": "A headless Command Palette for hyper commands in your SvelteKit app",
+  "version": "0.0.11",
+  "description": "A headless Command Palette for your Svelte app",
   "keywords": [
     "sveltekit",
     "svelte",
@@ -53,8 +53,7 @@
   "svelte": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "peerDependencies": {
-    "svelte": "3.x || 4.x",
-    "@sveltejs/kit": "1.x || 2.x"
+    "svelte": "3.x || 4.x"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^3.0.0",

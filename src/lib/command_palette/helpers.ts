@@ -3,22 +3,19 @@ import type { OneOrMany } from '$lib/utils/index.js';
 import { PALETTE_ITEM } from './constants.js';
 import type { HyperCommand, HyperCommandDefinition, HyperPage, HyperPageDefinition } from './types.js';
 
-
 function noopCommandRequest(): void { }
-
-function noopCommandAction(): void { }
 
 export function normalizeCommand(command: HyperCommandDefinition): HyperCommand {
     return {
         type: PALETTE_ITEM.COMMAND,
         id: (command.id ?? hyperId()) as HyperId,
         name: command.name,
-        description: command.description ?? '',
         category: command.category ?? '',
+        description: command.description ?? '',
         keywords: command.keywords ?? [],
         shortcut: Array.isArray(command.shortcut) ? command.shortcut : command.shortcut ? [command.shortcut] : [],
         onRequest: command.onRequest ?? noopCommandRequest,
-        onAction: command.onAction ?? noopCommandAction,
+        onAction: command.onAction,
         onError: command.onError,
         onUnregister: command.onUnregister,
         meta: command.meta ?? {},

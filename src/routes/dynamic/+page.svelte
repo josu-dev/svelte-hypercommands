@@ -45,6 +45,12 @@
 
   <button on:click={registerCommand}> Register Command </button>
   <button on:click={() => unregisterCommands?.()}> Unregister Command </button>
+  <button on:click={() => setTimeout(registerCommand, 5000)}>
+    Delayed register
+  </button>
+  <button on:click={() => setTimeout(() => unregisterCommands?.(), 5000)}>
+    Delayed Unregister
+  </button>
 </main>
 
 <style>
