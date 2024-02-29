@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { appRoutesAsPages, defineCommand } from '$lib/command_palette/helpers.js';
   import CommandPalette from '$lib/default/CommandPalette.svelte';
+  import { defineCommand, definePagesFromRoutes } from '$lib/index.js';
   import '../app.css';
 
   const commands = defineCommand([
@@ -27,7 +27,7 @@
     },
   ]);
 
-  const pages = appRoutesAsPages();
+  const pages = definePagesFromRoutes();
 </script>
 
 <CommandPalette {commands} {pages} />

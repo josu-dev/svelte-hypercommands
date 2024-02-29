@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { defineCommand } from '$lib/command_palette/helpers.js';
   import { helpers, states } from '$lib/default/CommandPalette.svelte';
+  import { defineCommand } from '$lib/index.js';
   import { onDestroy } from 'svelte';
 
   const command = defineCommand([

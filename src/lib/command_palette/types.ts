@@ -1,5 +1,6 @@
-import type { RegisteredHyperCommandMeta } from '$lib/index.js';
-import type { MaybePromise, RecordToWritables } from '$lib/utils/types.js';
+import type { RegisteredHyperCommandMeta, RegisteredHyperPageMeta } from '$lib/index.js';
+import type { HyperId } from '$lib/internal/index.js';
+import type { MaybePromise } from '$lib/utils/index.js';
 import type { Action } from 'svelte/action';
 import type { Writable } from 'svelte/store';
 
@@ -17,122 +18,117 @@ export type SortMode = 'ASC' | 'DESC' | 'NONE';
 
 export type ChangeFn<T> = (args: { curr: T; next: T; }) => T;
 
-export type CreateCommandPaletteOptions = {
-  defaultOpen?: boolean;
-  open?: Writable<boolean>;
-  onOpenChange?: ChangeFn<boolean>;
-  commands?: HyperCommand[];
-  history?: HyperId[];
-  selectedIdx?: number | undefined;
-  selectedId?: HyperId;
-  element?: HTMLElement | undefined;
-  inputText?: string;
-  emptyMode?: ResultsEmptyMode;
-  portal?: HTMLElement | string | false | undefined;
-  pages?: HyperPage[];
-  sortPages?: SortMode;
+export type CommandPaletteOptions = {
+    commands?: HyperCommand[];
+    commandsEmptyMode?: ResultsEmptyMode;
+    commandsHistory?: HyperId[];
+    commandsShortcut?: string;
+    commandsSortMode?: SortMode;
+    defaultInputText?: string;
+    defaultOpen?: boolean;
+    error?: { error: unknown; command?: HyperCommand; page?: HyperPage; };
+    onNavigation?: (page: HyperPage) => MaybePromise<void>;
+    onNavigationExternal?: (url: string) => MaybePromise<void>;
+    onNavigationLocal?: (url: string) => MaybePromise<void>;
+    open?: Writable<boolean>;
+    pages?: HyperPage[];
+    pagesEmptyMode?: ResultsEmptyMode;
+    pagesHistory?: HyperId[];
+    pagesShortcut?: string;
+    pagesSortMode?: SortMode;
+    portal?: HTMLElement | string | false | undefined;
+    resetOnOpen?: boolean;
+    searchPlaceholder?: string | false;
+    selectedEl?: HTMLElement | undefined;
+    selectedId?: HyperId;
+    selectedIdx?: number | undefined;
 };
 
-export type HyperPaletteState = undefined | Writable<any>;
+export type CreateCommandPaletteOptions = Pick<
+    CommandPaletteOptions,
+    | 'commands' | 'commandsEmptyMode' | 'commandsHistory' | 'commandsSortMode'
+    | 'defaultInputText' | 'defaultOpen'
+    | 'onNavigation' | 'onNavigationExternal' | 'onNavigationLocal' | 'open'
+    | 'pages' | 'pagesEmptyMode' | 'pagesHistory' | 'pagesSortMode'
+    | 'portal' | 'resetOnOpen' | 'searchPlaceholder'
+>;
 
-export type CommandPaletteState = {
-  commands: HyperCommand[];
-  results: HyperCommand[];
-  history: HyperId[];
-  selectedIdx?: number;
-  currentCommand?: HyperCommand;
-  element?: HTMLElement;
-  error?: { error: Error; command: HyperCommand; };
-  inputText: string;
-  open: boolean;
-};
+export type ItemRequestSource =
+    | { type: 'keyboard'; }
+    | { type: 'shortcut'; shortcut: string; }
+    | { type: 'click'; event: MouseEvent; };
 
-export type CommandPaletteStateStores = RecordToWritables<CommandPaletteState>;
-
-export type HyperId = string;
-
-export type CommandRequestSource = {
-  type: 'keyboard';
-} | {
-  type: 'shortcut';
-  shortcut: string;
-} | {
-  type: 'click';
-  event: MouseEvent;
-};
-
-export type CommandRequestHook = (command: HyperCommand, source: CommandRequestSource) => MaybePromise<boolean | void>;
+export type CommandRequestHook = (command: HyperCommand, source: ItemRequestSource) => MaybePromise<boolean | void>;
 
 export type CommandActionArgs = {
-  command: HyperCommand;
-  state: HyperPaletteState;
-  source: CommandRequestSource;
+    command: HyperCommand;
+    source: ItemRequestSource;
 };
 
 export type CommandActionHook = (args: CommandActionArgs) => MaybePromise<void>;
 
-export type CommandErrorHook = (args: CommandActionArgs & { error: unknown; }) => MaybePromise<void>;
+export type CommandErrorHook = (args: CommandActionArgs & CommandPaletteOptions['error']) => MaybePromise<void>;
 
 export type CommandUnregisterHook = (command: HyperCommand) => MaybePromise<void>;
 
 export type CommandMeta = RegisteredHyperCommandMeta;
 
 export type HyperCommandDefinition = {
-  id?: HyperId;
-  category?: string;
-  name: string;
-  description?: string;
-  keywords?: string[];
-  shortcut?: string | string[];
-  onRequest?: CommandRequestHook;
-  onAction?: CommandActionHook;
-  onError?: CommandErrorHook;
-  onUnregister?: CommandUnregisterHook;
-  meta?: CommandMeta;
+    id?: string;
+    category?: string;
+    name: string;
+    description?: string;
+    keywords?: string[];
+    shortcut?: string | string[];
+    onRequest?: CommandRequestHook;
+    onAction?: CommandActionHook;
+    onError?: CommandErrorHook;
+    onUnregister?: CommandUnregisterHook;
+    meta?: CommandMeta;
 };
 
 export type HyperCommand = {
-  type: HyperCommandType;
-  id: HyperId;
-  category: string;
-  name: string;
-  description: string;
-  keywords: string[];
-  shortcut: string[];
-  onRequest: CommandRequestHook;
-  onAction: CommandActionHook;
-  onError?: CommandErrorHook;
-  onUnregister?: CommandUnregisterHook;
-  meta: CommandMeta;
+    type: HyperCommandType;
+    id: HyperId;
+    category: string;
+    name: string;
+    description: string;
+    keywords: string[];
+    shortcut: string[];
+    onRequest: CommandRequestHook;
+    onAction: CommandActionHook;
+    onError?: CommandErrorHook;
+    onUnregister?: CommandUnregisterHook;
+    meta: CommandMeta;
 };
 
+export type PageMeta = RegisteredHyperPageMeta;
+
 export type HyperPageDefinition = {
-  id?: string;
-  name?: string;
-  description?: string;
-  url: string;
+    id?: string;
+    name?: string;
+    url: string;
+    meta?: PageMeta;
 };
 
 export type HyperPage = {
-  type: HyperPageType;
-  id: string;
-  name: string;
-  description: string;
-  external: boolean;
-  url: string;
-  urlHostPathname: string;
+    type: HyperPageType;
+    id: HyperId;
+    name: string;
+    external: boolean;
+    url: string;
+    urlHostPathname: string;
+    meta: PageMeta;
 };
 
 export type HyperItem = HyperCommand | HyperPage;
 
 export type HyperElementAction<T extends HyperItem> = Action<HTMLElement, T>;
 
-export type InternalItem<T extends HyperItem> = {
-  item: T;
-};
-
 type ItemMatcher<T extends HyperItem> = HyperId | T | ((item: T) => boolean);
 
 export type CommandMatcher = ItemMatcher<HyperCommand>;
 
 export type PageMatcher = ItemMatcher<HyperPage>;
+
+export type CleanupCallback = () => void;

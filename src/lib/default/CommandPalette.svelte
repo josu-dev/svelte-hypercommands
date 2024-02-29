@@ -9,10 +9,11 @@
 </script>
 
 <script lang="ts">
-  import { PALETTE_MODE } from '$lib/command_palette/enums.js';
+  import { PALETTE_MODE } from '$lib/command_palette/constants.js';
+  import { shortcutToKbd } from '$lib/command_palette/helpers.js';
   import type { HyperCommand, HyperPage } from '$lib/command_palette/types.js';
+  import { isBrowser } from '$lib/internal/index.js';
   import { removeAllKeyBindings } from '$lib/keyboard/keystroke.js';
-  import { isBrowser, shortcutToKbd } from '$lib/utils/functions.js';
   import { onMount } from 'svelte';
 
   export let commands: HyperCommand[] = [];
@@ -20,7 +21,8 @@
   export let placeholder = 'Search for commands...';
   export let a11yInputLabel = 'Palette Search';
 
-  const { portal, palette, panel, form, label, input, page, command } = elements;
+  const { portal, palette, panel, form, label, input, page, command } =
+    elements;
   const { open, paletteMode, matchingCommands, matchingPages } = states;
 
   let unregisterCommands: () => void;
@@ -90,14 +92,15 @@
                         stroke-linecap="round"
                         stroke-linejoin="round"
                         class="lucide lucide-home"
-                        ><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline
-                          points="9 22 9 12 15 12 15 22"
-                        /></svg
+                        ><path
+                          d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+                        /><polyline points="9 22 9 12 15 12 15 22" /></svg
                       >
                     {/if}
                   </div>
-                  <div class="result-label" title={p.description}>
-                    <span class="result-label-name">{p.name}</span>{#if p.name !== p.url}
+                  <div class="result-label" title={p.url}>
+                    <span class="result-label-name">{p.name}</span
+                    >{#if p.name !== p.url}
                       <span class="result-page-url">{p.urlHostPathname}</span>
                     {/if}
                   </div>
@@ -115,7 +118,9 @@
                 <div class="result-container">
                   <div class="result-label" title={c.description}>
                     {#if c.category}
-                      <span class="result-label-name">{c.category}: {c.name}</span>
+                      <span class="result-label-name"
+                        >{c.category}: {c.name}</span
+                      >
                     {:else}
                       <span class="result-label-name">{c.name}</span>
                     {/if}
@@ -219,8 +224,10 @@
   }
   .search-input:focus {
     --tw-ring-color: rgb(0, 120, 212);
-    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
-    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(var(--tw-ring-offset-width)) var(--tw-ring-color);
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0
+      var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0
+      calc(var(--tw-ring-offset-width)) var(--tw-ring-color);
   }
 
   .palette-results {

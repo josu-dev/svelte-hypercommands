@@ -12,55 +12,55 @@
 type KeyBindingPress = [string[], string];
 
 type KeyBindingCallback = {
-  (event: KeyboardEvent): void;
-  once?: boolean;
+    (event: KeyboardEvent): void;
+    once?: boolean;
 };
 
 export interface KeyBindingHandlerOptions {
-  /**
-   * Keybinding sequences will wait this long between key presses before  
-   * cancelling (default: 1000).
-   *
-   * **Note:** Setting this value too low (i.e. `300`) will be too fast for many
-   * of your users.
-   */
-  timeout?: number;
+    /**
+     * Keybinding sequences will wait this long between key presses before  
+     * cancelling (default: 1000).
+     *
+     * **Note:** Setting this value too low (i.e. `300`) will be too fast for many
+     * of your users.
+     */
+    timeout?: number;
 }
 
 /**
  * Options to configure the behavior of keybindings.
  */
 export type KeyBindingOptions = KeyBindingHandlerOptions & {
-  /**
-   * Key presses will listen to this event (default: "keydown").
-   */
-  event: 'keydown' | 'keyup';
-  /**
-   * Whether the keybinding should only fire once.
-   */
-  once: boolean;
-  /**
-   * A function that returns whether the keybinding should run.
-   */
-  shouldRun: (event: KeyboardEvent) => boolean;
+    /**
+     * Key presses will listen to this event (default: "keydown").
+     */
+    event: 'keydown' | 'keyup';
+    /**
+     * Whether the keybinding should only fire once.
+     */
+    once: boolean;
+    /**
+     * A function that returns whether the keybinding should run.
+     */
+    shouldRun: (event: KeyboardEvent) => boolean;
 };
 
 /**
  * Options to configure the behavior of keybindings.
  */
 export type AddKeyBindOptions = KeyBindingHandlerOptions & {
-  /**
-   * Key presses will listen to this event (default: "keydown").
-   */
-  event?: 'keydown' | 'keyup';
-  /**
-   * Whether the keybinding should only fire once.
-   */
-  once?: boolean;
-  /**
-   * A function that returns whether the keybinding should run.
-   */
-  shouldRun?: (event: KeyboardEvent) => boolean;
+    /**
+     * Key presses will listen to this event (default: "keydown").
+     */
+    event?: 'keydown' | 'keyup';
+    /**
+     * Whether the keybinding should only fire once.
+     */
+    once?: boolean;
+    /**
+     * A function that returns whether the keybinding should run.
+     */
+    shouldRun?: (event: KeyboardEvent) => boolean;
 };
 
 /**
@@ -110,10 +110,10 @@ const ALT_GRAPH_ALIASES = PLATFORM === 'Win32' ? ['Control', 'Alt'] : APPLE_DEVI
  * KeyboardEvent's for F1/F2/etc keys.
  */
 function getModifierState(event: KeyboardEvent, mod: string) {
-  return typeof event.getModifierState === 'function'
-    ? event.getModifierState(mod) ||
-    (ALT_GRAPH_ALIASES.includes(mod) && event.getModifierState('AltGraph'))
-    : false;
+    return typeof event.getModifierState === 'function'
+        ? event.getModifierState(mod) ||
+        (ALT_GRAPH_ALIASES.includes(mod) && event.getModifierState('AltGraph'))
+        : false;
 }
 
 /**
@@ -125,15 +125,15 @@ function getModifierState(event: KeyboardEvent, mod: string) {
  * <mods>     = `<mod>+<mod>+...`
  */
 export function parseKeybinding(str: string): KeyBindingPress[] {
-  return str
-    .trim()
-    .split(' ')
-    .map((press) => {
-      let mods = press.split(/\b\+/);
-      const key = mods.pop() as string;
-      mods = mods.map((mod) => (mod === '$mod' ? MOD : mod));
-      return [mods, key];
-    });
+    return str
+        .trim()
+        .split(' ')
+        .map((press) => {
+            let mods = press.split(/\b\+/);
+            const key = mods.pop() as string;
+            mods = mods.map((mod) => (mod === '$mod' ? MOD : mod));
+            return [mods, key];
+        });
 }
 
 /**
@@ -141,271 +141,274 @@ export function parseKeybinding(str: string): KeyBindingPress[] {
  * partially or exactly.
  */
 function match(event: KeyboardEvent, press: KeyBindingPress): boolean {
-  // prettier-ignore
-  return !(
-    // Allow either the `event.key` or the `event.code`
-    // MDN event.key: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key
-    // MDN event.code: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
-    (
-      press[1].toUpperCase() !== event.key.toUpperCase() &&
-      press[1] !== event.code
-    ) ||
+    // prettier-ignore
+    return !(
+        // Allow either the `event.key` or the `event.code`
+        // MDN event.key: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key
+        // MDN event.code: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
+        (
+            press[1].toUpperCase() !== event.key.toUpperCase() &&
+            press[1] !== event.code
+        ) ||
 
-    // Ensure all the modifiers in the keybinding are pressed.
-    press[0].find(mod => {
-      return !getModifierState(event, mod);
-    }) ||
+        // Ensure all the modifiers in the keybinding are pressed.
+        press[0].find(mod => {
+            return !getModifierState(event, mod);
+        }) ||
 
-    // KEYBINDING_MODIFIER_KEYS (Shift/Control/etc) change the meaning of a
-    // keybinding. So if they are pressed but aren't part of the current
-    // keybinding press, then we don't have a match.
-    KEYBINDING_MODIFIER_KEYS.find(mod => {
-      return !press[0].includes(mod) && press[1] !== mod && getModifierState(event, mod);
-    })
-  );
+        // KEYBINDING_MODIFIER_KEYS (Shift/Control/etc) change the meaning of a
+        // keybinding. So if they are pressed but aren't part of the current
+        // keybinding press, then we don't have a match.
+        KEYBINDING_MODIFIER_KEYS.find(mod => {
+            return !press[0].includes(mod) && press[1] !== mod && getModifierState(event, mod);
+        })
+    );
 }
 
 class KeyBindingHandler {
-  keyBindings: [KeyBindingPress[], (KeyBindingCallback)[]][];
-  #possibleMatches: Map<KeyBindingPress[], KeyBindingPress[]>;
-  #timeoutID: number | undefined;
-  #timeout: number;
-  event: 'keydown' | 'keyup';
+    keyBindings: [KeyBindingPress[], (KeyBindingCallback)[]][];
+    #possibleMatches: Map<KeyBindingPress[], KeyBindingPress[]>;
+    #timeoutID: number | undefined;
+    #timeout: number;
+    event: 'keydown' | 'keyup';
 
-  constructor(options: KeyBindingOptions = { event: DEFAULT_EVENT, once: false, shouldRun: DEFAULT_SHOULD_RUN }) {
-    this.keyBindings = [];
-    this.#possibleMatches = new Map<KeyBindingPress[], KeyBindingPress[]>();
-    this.#timeoutID = undefined;
-    this.#timeout = options.timeout ?? DEFAULT_TIMEOUT;
-    this.event = options.event ?? DEFAULT_EVENT;
-  }
-
-  onKeyEvent = (event: KeyboardEvent) => {
-    // Ensure and stop any event that isn't a full keyboard event.
-    // Autocomplete option navigation and selection would fire a instanceof Event,
-    // instead of the expected KeyboardEvent
-    if (!(event instanceof KeyboardEvent)) {
-      return;
+    constructor(options: KeyBindingOptions = { event: DEFAULT_EVENT, once: false, shouldRun: DEFAULT_SHOULD_RUN }) {
+        this.keyBindings = [];
+        this.#possibleMatches = new Map<KeyBindingPress[], KeyBindingPress[]>();
+        this.#timeoutID = undefined;
+        this.#timeout = options.timeout ?? DEFAULT_TIMEOUT;
+        this.event = options.event ?? DEFAULT_EVENT;
     }
 
-    for (let i = 0; i < this.keyBindings.length; i++) {
-      const keyBinding = this.keyBindings[i];
-      const sequence = keyBinding[0];
-      const callback = keyBinding[1];
-
-      const prev = this.#possibleMatches.get(sequence);
-      const remainingExpectedPresses = prev ? prev : sequence;
-      const currentExpectedPress = remainingExpectedPresses[0];
-
-      const matches = match(event, currentExpectedPress);
-
-      if (!matches) {
-        // Modifier keydown events shouldn't break sequences
-        // Note: This works because:
-        // - non-modifiers will always return false
-        // - if the current keypress is a modifier then it will return true when we check its state
-        // MDN: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/getModifierState
-        if (!getModifierState(event, event.key)) {
-          this.#possibleMatches.delete(sequence);
+    onKeyEvent = (event: KeyboardEvent) => {
+        // Ensure and stop any event that isn't a full keyboard event.
+        // Autocomplete option navigation and selection would fire a instanceof Event,
+        // instead of the expected KeyboardEvent
+        if (!(event instanceof KeyboardEvent)) {
+            return;
         }
-      } else if (remainingExpectedPresses.length > 1) {
-        this.#possibleMatches.set(sequence, remainingExpectedPresses.slice(1));
-      } else {
-        this.#possibleMatches.delete(sequence);
 
-        const callbacksToRemove: number[] = [];
-        for (let i = 0; i < callback.length; i++) {
-          const cb = callback[i];
-          if (cb.once) {
-            callbacksToRemove.push(i);
-          }
-          cb(event);
+        for (let i = 0; i < this.keyBindings.length; i++) {
+            const keyBinding = this.keyBindings[i];
+            const sequence = keyBinding[0];
+            const callback = keyBinding[1];
+
+            const prev = this.#possibleMatches.get(sequence);
+            const remainingExpectedPresses = prev ? prev : sequence;
+            const currentExpectedPress = remainingExpectedPresses[0];
+
+            const matches = match(event, currentExpectedPress);
+
+            if (!matches) {
+                // Modifier keydown events shouldn't break sequences
+                // Note: This works because:
+                // - non-modifiers will always return false
+                // - if the current keypress is a modifier then it will return true when we check its state
+                // MDN: https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/getModifierState
+                if (!getModifierState(event, event.key)) {
+                    this.#possibleMatches.delete(sequence);
+                }
+            } else if (remainingExpectedPresses.length > 1) {
+                this.#possibleMatches.set(sequence, remainingExpectedPresses.slice(1));
+            } else {
+                this.#possibleMatches.delete(sequence);
+
+                const callbacksToRemove: number[] = [];
+                for (let i = 0; i < callback.length; i++) {
+                    const cb = callback[i];
+                    if (cb.once) {
+                        callbacksToRemove.push(i);
+                    }
+                    cb(event);
+                }
+                for (let i = callbacksToRemove.length - 1; i >= 0; i--) {
+                    callback.splice(callbacksToRemove[i], 1);
+                }
+            }
         }
-        for (let i = callbacksToRemove.length - 1; i >= 0; i--) {
-          callback.splice(callbacksToRemove[i], 1);
+
+        clearTimeout(this.#timeoutID);
+        this.#timeoutID = setTimeout(
+            this.#possibleMatches.clear.bind(this.#possibleMatches),
+            this.#timeout,
+        );
+    };
+
+    addKeyBinding(
+        keyBinding: KeyBindingPress[],
+        callback: KeyBindingCallback,
+        options: KeyBindingOptions,
+    ) {
+        if (options.timeout !== undefined) {
+            if (options.timeout < 1) {
+                throw new Error('timeout must be a positive number greater than 0');
+            }
+            if (options.timeout < this.#timeout) {
+                this.#timeout = options.timeout;
+            }
         }
-      }
+
+        let existingKeyBindingIndex = -1;
+        for (let i = 0; i < this.keyBindings.length; i++) {
+            const existingKeyBinding = this.keyBindings[i][0];
+            if (existingKeyBinding.length !== keyBinding.length) {
+                continue;
+            }
+            let match = true;
+            for (let j = 0; j < existingKeyBinding.length; j++) {
+                if (existingKeyBinding[j][0].length !== keyBinding[j][0].length) {
+                    match = false;
+                    break;
+                }
+                if (existingKeyBinding[j][1] !== keyBinding[j][1]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                existingKeyBindingIndex = i;
+                break;
+            }
+        }
+        Object.assign(callback, { once: options.once ?? false });
+        if (existingKeyBindingIndex === -1) {
+            this.keyBindings.push([keyBinding, [callback]]);
+        } else {
+            this.keyBindings[existingKeyBindingIndex][1].push(callback);
+        }
     }
 
-    clearTimeout(this.#timeoutID);
-    this.#timeoutID = setTimeout(
-      this.#possibleMatches.clear.bind(this.#possibleMatches),
-      this.#timeout,
-    );
-  };
-
-  addKeyBinding(
-    keyBinding: KeyBindingPress[],
-    callback: KeyBindingCallback,
-    options: KeyBindingOptions,
-  ) {
-    if (options.timeout !== undefined) {
-      if (options.timeout < 1) {
-        throw new Error('timeout must be a positive number greater than 0');
-      }
-      if (options.timeout < this.#timeout) {
-        this.#timeout = options.timeout;
-      }
-    }
-
-    let existingKeyBindingIndex = -1;
-    for (let i = 0; i < this.keyBindings.length; i++) {
-      const existingKeyBinding = this.keyBindings[i][0];
-      if (existingKeyBinding.length !== keyBinding.length) {
-        continue;
-      }
-      let match = true;
-      for (let j = 0; j < existingKeyBinding.length; j++) {
-        if (existingKeyBinding[j][0].length !== keyBinding[j][0].length) {
-          match = false;
-          break;
+    removeKeyBinding(keyBinding: KeyBindingPress[], callback: (event: KeyboardEvent) => void) {
+        const existingKeyBindingIndex = this.keyBindings.findIndex(
+            ([existingKeyBinding, existingCallbacks]) => {
+                if (existingKeyBinding.length !== keyBinding.length) {
+                    return false;
+                }
+                let match = true;
+                for (let j = 0; j < existingKeyBinding.length; j++) {
+                    if (existingKeyBinding[j][0].length !== keyBinding[j][0].length) {
+                        match = false;
+                        break;
+                    }
+                    if (existingKeyBinding[j][1] !== keyBinding[j][1]) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (!match) {
+                    return false;
+                }
+                return existingCallbacks.includes(callback);
+            },
+        );
+        if (existingKeyBindingIndex === -1) {
+            return;
         }
-        if (existingKeyBinding[j][1] !== keyBinding[j][1]) {
-          match = false;
-          break;
+        const existingCallbacks = this.keyBindings[existingKeyBindingIndex][1];
+        existingCallbacks.splice(existingCallbacks.indexOf(callback), 1);
+        if (existingCallbacks.length === 0) {
+            this.keyBindings.splice(existingKeyBindingIndex, 1);
         }
-      }
-      if (match) {
-        existingKeyBindingIndex = i;
-        break;
-      }
     }
-    Object.assign(callback, { once: options.once ?? false });
-    if (existingKeyBindingIndex === -1) {
-      this.keyBindings.push([keyBinding, [callback]]);
-    } else {
-      this.keyBindings[existingKeyBindingIndex][1].push(callback);
-    }
-  }
-
-  removeKeyBinding(keyBinding: KeyBindingPress[], callback: (event: KeyboardEvent) => void) {
-    const existingKeyBindingIndex = this.keyBindings.findIndex(
-      ([existingKeyBinding, existingCallbacks]) => {
-        if (existingKeyBinding.length !== keyBinding.length) {
-          return false;
-        }
-        let match = true;
-        for (let j = 0; j < existingKeyBinding.length; j++) {
-          if (existingKeyBinding[j][0].length !== keyBinding[j][0].length) {
-            match = false;
-            break;
-          }
-          if (existingKeyBinding[j][1] !== keyBinding[j][1]) {
-            match = false;
-            break;
-          }
-        }
-        if (!match) {
-          return false;
-        }
-        return existingCallbacks.includes(callback);
-      },
-    );
-    if (existingKeyBindingIndex === -1) {
-      return;
-    }
-    const existingCallbacks = this.keyBindings[existingKeyBindingIndex][1];
-    existingCallbacks.splice(existingCallbacks.indexOf(callback), 1);
-    if (existingCallbacks.length === 0) {
-      this.keyBindings.splice(existingKeyBindingIndex, 1);
-    }
-  }
 }
 
 const registeredKeydownListeners = new WeakMap<Window | HTMLElement, KeyBindingHandler>();
 const registeredKeyupListeners = new WeakMap<Window | HTMLElement, KeyBindingHandler>();
 
 export function addKeyBinding(
-  target: Window | HTMLElement | string,
-  keyBinding: string,
-  callback: (event: KeyboardEvent) => void,
-  options: AddKeyBindOptions = {},
+    target: Window | HTMLElement | string,
+    keyBinding: string,
+    callback: (event: KeyboardEvent) => void,
+    options: AddKeyBindOptions = {},
 ) {
-  const targetElement =
-    typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
-  if (!targetElement) {
-    return false;
-  }
-  const _options = {
-    event: options.event ?? DEFAULT_EVENT,
-    once: options.once ?? false,
-    shouldRun: options.shouldRun ?? DEFAULT_SHOULD_RUN,
-  };
+    const targetElement =
+        typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
+    if (!targetElement) {
+        return undefined;
+    }
+    const _options = {
+        event: options.event ?? DEFAULT_EVENT,
+        once: options.once ?? false,
+        shouldRun: options.shouldRun ?? DEFAULT_SHOULD_RUN,
+    };
 
-  const eventType = options.event ?? DEFAULT_EVENT;
-  const listenerMap = (eventType === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
-  let handler = listenerMap.get(targetElement);
-  if (!handler) {
-    handler = new KeyBindingHandler(_options);
-    listenerMap.set(targetElement, handler);
-    targetElement.addEventListener(handler.event, handler.onKeyEvent as any);
-  }
-  const keyBindingPress = parseKeybinding(keyBinding);
-  handler.addKeyBinding(keyBindingPress, callback, _options);
-  return () => {
-    handler?.removeKeyBinding(keyBindingPress, callback);
-  };
+    const eventType = options.event ?? DEFAULT_EVENT;
+    const listenerMap = (eventType === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
+    let handler = listenerMap.get(targetElement);
+    if (!handler) {
+        handler = new KeyBindingHandler(_options);
+        listenerMap.set(targetElement, handler);
+        targetElement.addEventListener(handler.event, handler.onKeyEvent as any);
+    }
+    const keyBindingPress = parseKeybinding(keyBinding);
+    handler.addKeyBinding(keyBindingPress, callback, _options);
+    return () => {
+        handler?.removeKeyBinding(keyBindingPress, callback);
+    };
 }
 
 export function removeKeyBindingCallback(
-  target: Window | HTMLElement | string,
-  keyBinding: string,
-  callback: (event: KeyboardEvent) => void,
-  event: 'keydown' | 'keyup' = 'keydown',
+    target: Window | HTMLElement | string,
+    keyBinding: string,
+    callback: (event: KeyboardEvent) => void,
+    event: 'keydown' | 'keyup' = 'keydown',
 ) {
-  const targetElement =
-    typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
-  if (!targetElement) {
-    return false;
-  }
+    const targetElement =
+        typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
+    if (!targetElement) {
+        return false;
+    }
 
-  const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
-  const handler = listenerMap.get(targetElement);
-  if (!handler) {
-    return;
-  }
-  const keyBindingPress = parseKeybinding(keyBinding);
-  handler.removeKeyBinding(keyBindingPress, callback);
-  if (handler.keyBindings.length === 0) {
-    listenerMap.delete(targetElement);
-    targetElement.removeEventListener(handler.event, handler.onKeyEvent as any);
-  }
+    const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
+    const handler = listenerMap.get(targetElement);
+    if (!handler) {
+        return false;
+    }
+    const keyBindingPress = parseKeybinding(keyBinding);
+    handler.removeKeyBinding(keyBindingPress, callback);
+    if (handler.keyBindings.length === 0) {
+        listenerMap.delete(targetElement);
+        targetElement.removeEventListener(handler.event, handler.onKeyEvent as any);
+    }
+    return true;
 }
 
 export function removeKeyBinding(target: Window | HTMLElement | string, keyBinding: string, event: 'keydown' | 'keyup' = 'keydown') {
-  const targetElement =
-    typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
-  if (!targetElement) {
-    return false;
-  }
+    const targetElement =
+        typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
+    if (!targetElement) {
+        return false;
+    }
 
-  const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
-  const handler = listenerMap.get(targetElement);
-  if (!handler) {
-    return;
-  }
-  const keyBindingPress = parseKeybinding(keyBinding);
-  handler.removeKeyBinding(keyBindingPress, () => { });
-  if (handler.keyBindings.length === 0) {
-    listenerMap.delete(targetElement);
-    targetElement.removeEventListener(handler.event, handler.onKeyEvent as any);
-  }
+    const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
+    const handler = listenerMap.get(targetElement);
+    if (!handler) {
+        return false;
+    }
+    const keyBindingPress = parseKeybinding(keyBinding);
+    handler.removeKeyBinding(keyBindingPress, () => { });
+    if (handler.keyBindings.length === 0) {
+        listenerMap.delete(targetElement);
+        targetElement.removeEventListener(handler.event, handler.onKeyEvent as any);
+    }
+    return true;
 }
 
 export function removeAllKeyBindings(target: Window | HTMLElement | string, event: 'keydown' | 'keyup' = 'keydown') {
-  const targetElement =
-    typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
-  if (!targetElement) {
-    return false;
-  }
+    const targetElement =
+        typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
+    if (!targetElement) {
+        return false;
+    }
 
-  const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
-  const handler = listenerMap.get(targetElement);
-  if (!handler) {
-    return;
-  }
-  listenerMap.delete(targetElement);
-  targetElement.removeEventListener(handler.event, handler.onKeyEvent as any);
+    const listenerMap = (event === 'keydown' ? registeredKeydownListeners : registeredKeyupListeners);
+    const handler = listenerMap.get(targetElement);
+    if (!handler) {
+        return false;
+    }
+    listenerMap.delete(targetElement);
+    targetElement.removeEventListener(handler.event, handler.onKeyEvent as any);
+    return true;
 }
 
 // In order to use this implementation we need to use Map instead os WeakMap

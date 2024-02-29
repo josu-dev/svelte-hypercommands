@@ -61,8 +61,8 @@ type BuilderStore<
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore - This is a valid type, but TS doesn't like it for some reason. TODO: Figure out why
     ...args: Parameters<ReturnType<R>>
-  ) => ReturnType<R> & { [K in `data-melt-${Name}`]: '' } & { action: A; }) & { action: A; }
-  : ReturnType<R> & { [K in `data-melt-${Name}`]: '' }
+  ) => ReturnType<R> & { [K in `data-hyper-${Name}`]: '' } & { action: A; }) & { action: A; }
+  : ReturnType<R> & { [K in `data-hyper-${Name}`]: '' }
 >;
 
 export function builder<
@@ -83,7 +83,7 @@ export function builder<
           const fn = (...args: Parameters<typeof result>) => {
             return hiddenAction({
               ...result(...args),
-              [`data-melt-${name}`]: '',
+              [`data-hyper-${name}`]: '',
               action: action ?? noop,
             });
           };
@@ -93,7 +93,7 @@ export function builder<
 
         return hiddenAction({
           ...result,
-          [`data-melt-${name}`]: '',
+          [`data-hyper-${name}`]: '',
           action: action ?? noop,
         });
       });
@@ -106,7 +106,7 @@ export function builder<
         const resultFn = (...args: Parameters<typeof result>) => {
           return hiddenAction({
             ...result(...args),
-            [`data-melt-${name}`]: '',
+            [`data-hyper-${name}`]: '',
             action: action ?? noop,
           });
         };
@@ -118,7 +118,7 @@ export function builder<
       return lightable(
         hiddenAction({
           ...result,
-          [`data-melt-${name}`]: '',
+          [`data-hyper-${name}`]: '',
           action: action ?? noop,
         }),
       );
