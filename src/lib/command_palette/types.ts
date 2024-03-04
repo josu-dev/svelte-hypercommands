@@ -1,4 +1,4 @@
-import type { RegisteredHyperCommandMeta, RegisteredHyperPageMeta } from '$lib/index.js';
+import type { Register } from '$lib/index.js';
 import type { HyperId } from '$lib/internal/index.js';
 import type { MaybePromise } from '$lib/utils/index.js';
 import type { Writable } from 'svelte/store';
@@ -171,7 +171,13 @@ export type CommandErrorHook = (args: CommandActionArgs & CommandPaletteOptions[
 
 export type CommandUnregisterHook = (command: HyperCommand) => MaybePromise<void>;
 
-export type CommandMeta = RegisteredHyperCommandMeta;
+export type CommandMeta = Register extends { HyperCommandMeta: infer _Meta; }
+    ? (
+        _Meta extends Record<string, any>
+        ? _Meta
+        : never
+    )
+    : Record<string, any>;
 
 export type HyperCommand = {
     /** @internal */
@@ -239,7 +245,13 @@ export type HyperCommandDefinition =
     & { id?: string; shortcut?: string | string[]; }
     & Partial<Pick<HyperCommand, 'category' | 'description' | 'keywords' | 'onRequest' | 'onError' | 'onUnregister' | 'meta'>>;
 
-export type HyperPageMeta = RegisteredHyperPageMeta;
+export type HyperPageMeta = Register extends { HyperPageMeta: infer _Meta; }
+    ? (
+        _Meta extends Record<string, any>
+        ? _Meta
+        : never
+    )
+    : Record<string, any>;
 
 export type HyperPage = {
     /** @internal */
@@ -277,7 +289,7 @@ export type HyperPage = {
     /**
      * User-defined metadata of the shape `Record<string, unknown>`.
      * 
-     * Can be set by extending the `Register` interface with the `HyperCommandMeta` prop in the `svelte-hypercommands` module.
+     * Can be set by extending the `Register` interface with the `HyperPageMeta` prop in the `svelte-hypercommands` module.
      */
     meta: HyperPageMeta;
 };

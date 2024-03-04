@@ -8,7 +8,7 @@ import { tick } from 'svelte';
 import { derived, get, type Writable } from 'svelte/store';
 import { builder } from './builder.js';
 import { PALETTE_ITEM, PALETTE_MODE, PALETTE_MODE_PREFIX, RESULTS_EMPTY_MODE, SORT_MODE } from './constants.js';
-import { DuplicatedIDError } from './errors.js';
+import { DuplicatedIdError } from './errors.js';
 import { normalizeCommand, normalizePage } from './helpers.js';
 import type {
     CleanupCallback,
@@ -56,7 +56,7 @@ const DEFAULTS = {
     pagesSortMode: SORT_MODE.ASC,
     portal: undefined,
     resetOnOpen: true,
-    searchPlaceholder: `Search pages... use ${PALETTE_MODE_PREFIX.COMMANDS} to search commands...`,
+    searchPlaceholder: `Search pages... ${PALETTE_MODE_PREFIX.COMMANDS} for commands...`,
     selectedEl: undefined,
     selectedId: undefined,
     selectedIdx: undefined,
@@ -420,7 +420,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
                     if (silentError) {
                         continue;
                     }
-                    throw new DuplicatedIDError(
+                    throw new DuplicatedIdError(
                         `ID ${newCommand.id} is not unique, shared between existing command ${$commands[existingIndex].name} and new command ${newCommand.name}`,
                     );
                 }
@@ -542,7 +542,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
                     if (silentError) {
                         continue;
                     }
-                    throw new DuplicatedIDError(
+                    throw new DuplicatedIdError(
                         `ID ${newPage.id} is not unique, shared between existing page ${$pages[existingIndex].name} and new page ${newPage.name}`,
                     );
                 }
@@ -947,8 +947,15 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
             }
             node.addEventListener('keydown', onKeydown);
 
+            tick().then(() => {
+                if (open.value) {
+                    _inputElement?.focus();
+                }
+            });
+
             return {
                 destroy() {
+                    _inputElement = null;
                     node.removeEventListener('input', onInput);
                     node.removeEventListener('keydown', onKeydown);
                 },

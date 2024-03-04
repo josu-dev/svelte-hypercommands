@@ -18,8 +18,7 @@
 
   export let commands: HyperCommand[] = [];
   export let pages: HyperPage[] = [];
-  export let placeholder = 'Search for commands...';
-  export let a11yInputLabel = 'Palette Search';
+  export let a11yInputLabel = 'Palette search';
 
   const { portal, palette, panel, form, label, input, page, command } =
     elements;
@@ -49,14 +48,14 @@
   });
 </script>
 
-<div class="palette-portal" use:portal>
-  <div class="palette-container" {...$palette} use:palette>
+<div use:portal class="palette-portal">
+  <div {...$palette} use:palette class="palette-portal">
     {#if $open}
       <div {...$panel} use:panel class="palette-panel">
         <form {...$form} use:form class="palette-search">
           <!-- svelte-ignore a11y-label-has-associated-control - $label has the missing for attribute -->
           <label {...$label} use:label>{a11yInputLabel}</label>
-          <input {...$input} use:input {placeholder} class="search-input" />
+          <input {...$input} use:input class="search-input" />
         </form>
         <ul class="palette-results">
           {#if $paletteMode === PALETTE_MODE.PAGES}

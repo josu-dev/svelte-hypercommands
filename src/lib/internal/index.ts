@@ -10,7 +10,7 @@ export function stringAsHyperId(id: string): HyperId {
     return id as HyperId;
 }
 
-export function noopCleanup() { }
+export function noopCleanup(): void { }
 
 function _log(type: 'log' | 'info' | 'warn' | 'error', ...args: any[]): void {
     console[type](...args);

@@ -3,7 +3,7 @@ import type { OneOrMany } from '$lib/utils/index.js';
 import { PALETTE_ITEM } from './constants.js';
 import type { HyperCommand, HyperCommandDefinition, HyperPage, HyperPageDefinition } from './types.js';
 
-function noopCommandRequest(): void { }
+function noopRequest(): void { }
 
 export function normalizeCommand(command: HyperCommandDefinition): HyperCommand {
     return {
@@ -14,7 +14,7 @@ export function normalizeCommand(command: HyperCommandDefinition): HyperCommand 
         description: command.description ?? '',
         keywords: command.keywords ?? [],
         shortcut: Array.isArray(command.shortcut) ? command.shortcut : command.shortcut ? [command.shortcut] : [],
-        onRequest: command.onRequest ?? noopCommandRequest,
+        onRequest: command.onRequest ?? noopRequest,
         onAction: command.onAction,
         onError: command.onError,
         onUnregister: command.onUnregister,
@@ -106,7 +106,7 @@ export function definePagesFromRoutes({ rootName = 'root' } = { rootName: 'root'
 }
 
 
-export function shortcutToKbd(shortcut: string) {
+export function shortcutToKbd(shortcut: string): string[] {
     const parts = shortcut.split('+');
     const kdbs: string[] = [];
 
