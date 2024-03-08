@@ -4,8 +4,8 @@ export const DEFAULT_PALETTE_MODE = {
 } as const;
 
 export const DEFAULT_PALETTE_MODE_PREFIX = {
-    COMMANDS: '>',
-    PAGES: '',
+    COMMAND: '>',
+    PAGE: '',
 } as const;
 
 export const HYPER_ITEM_TYPE = DEFAULT_PALETTE_MODE;
@@ -15,11 +15,19 @@ export const PALETTE_CLOSE_ACTION = {
     KEEP: 'KEEP',
 } as const;
 
-export const PALETTE_CLOSE_ON = {
+export const ACTIONABLE_CLOSE_ON = {
     ALWAYS: 'ALWAYS',
     NEVER: 'NEVER',
     ON_TRIGGER: 'ON_TRIGGER',
     ON_CANCEL: 'ON_CANCEL',
+    ON_SUCCESS: 'ON_SUCCESS',
+    ON_ERROR: 'ON_ERROR',
+} as const;
+
+export const NAVIGABLE_CLOSE_ON = {
+    ALWAYS: 'ALWAYS',
+    NEVER: 'NEVER',
+    ON_TRIGGER: 'ON_TRIGGER',
     ON_SUCCESS: 'ON_SUCCESS',
     ON_ERROR: 'ON_ERROR',
 } as const;

@@ -47,10 +47,10 @@ export type HyperCustomNames = UserDefinedItems[keyof UserDefinedItems]['name'];
 
 export type HyperCommandType = typeof C.HYPER_ITEM_TYPE.COMMAND;
 
-export type HyperCommandPrefix = UserDefinedCommand extends never ? typeof C.DEFAULT_PALETTE_MODE_PREFIX.COMMANDS
+export type HyperCommandPrefix = UserDefinedCommand extends never ? typeof C.DEFAULT_PALETTE_MODE_PREFIX.COMMAND
     : UserDefinedCommand extends { prefix: infer _Prefix; }
     ? _Prefix extends string ? _Prefix : never
-    : typeof C.DEFAULT_PALETTE_MODE_PREFIX.COMMANDS;
+    : typeof C.DEFAULT_PALETTE_MODE_PREFIX.COMMAND;
 
 export type HyperCommandName = UserDefinedCommand extends never ? 'commands'
     : UserDefinedCommand extends { name: infer _Name; }
@@ -59,10 +59,10 @@ export type HyperCommandName = UserDefinedCommand extends never ? 'commands'
 
 export type HyperPageType = typeof C.HYPER_ITEM_TYPE.PAGE;
 
-export type HyperPagePrefix = UserDefinedPage extends never ? typeof C.DEFAULT_PALETTE_MODE_PREFIX.PAGES
+export type HyperPagePrefix = UserDefinedPage extends never ? typeof C.DEFAULT_PALETTE_MODE_PREFIX.PAGE
     : UserDefinedPage extends { prefix: infer _Prefix; }
     ? _Prefix extends string ? _Prefix : never
-    : typeof C.DEFAULT_PALETTE_MODE_PREFIX.PAGES;
+    : typeof C.DEFAULT_PALETTE_MODE_PREFIX.PAGE;
 
 export type HyperPageName = UserDefinedPage extends never ? 'pages'
     : UserDefinedPage extends { name: infer _Name; }
@@ -76,7 +76,9 @@ export type PaletteMode = HyperItemType;
 
 export type PaletteCloseAction = Values<typeof C.PALETTE_CLOSE_ACTION>;
 
-export type PaletteCloseOn = Values<typeof C.PALETTE_CLOSE_ON>;
+export type ActionableCloseOn = Values<typeof C.ACTIONABLE_CLOSE_ON>;
+
+export type NavigableCloseOn = Values<typeof C.ACTIONABLE_CLOSE_ON>;
 
 export type ResultsEmptyMode = Values<typeof C.RESULTS_EMPTY_MODE>;
 
@@ -177,12 +179,6 @@ export interface HyperItemBase {
      */
     closeAction?: PaletteCloseAction;
     /**
-     * Overrides the default close on for the palette when the item is executed.
-     * 
-     * @see {@link HyperPaletteOptions.closeOn} for more information.
-     */
-    closeOn?: PaletteCloseOn;
-    /**
      * User-defined metadata of the shape `Record<string, unknown>`.
      * 
      * Can be set by extending the `Register` interface with the `HyperPageMeta` prop in the `svelte-hypercommands` module.
@@ -199,6 +195,12 @@ export interface HyperCommand extends HyperItemBase, HyperItemIdentifier<HyperCo
      * Description of the HyperCommand. Can be used to provide additional information in the palette.
      */
     description: string;
+    /**
+     * Overrides the default close on for HyperCommands.
+     * 
+     * @see {@link HyperPaletteOptions.itemsOptions} for more information.
+     */
+    closeOn?: ActionableCloseOn;
     /**
      * User-defined metadata of the shape `Record<string, unknown>`.
      * 
@@ -240,6 +242,12 @@ export interface HyperPage extends HyperItemIdentifier<HyperPageType> {
      */
     readonly urlHostPathname: string;
     /**
+     * Overrides the default close on for HyperPages.
+     * 
+     * @see {@link HyperPaletteOptions.itemsOptions} for more information.
+     */
+    closeOn?: NavigableCloseOn;
+    /**
      * User-defined metadata of the shape `Record<string, unknown>`.
      * 
      * Can be set by extending the `Register` interface with the `HyperPageMeta` prop in the `svelte-hypercommands` module.
@@ -279,77 +287,108 @@ export type HyperItemPrefixMap =
     & { [T in HyperCustomTypes]: UserDefinedItems[T]['prefix']; };
 
 
-export type PaletteItemConfig<T extends HyperItemType, Item = HyperItemTypeMap[T]> = {
-    /**
-     * Prefix used in the search input for setting the mode.
-     */
-    prefix: HyperItemPrefixMap[T];
-    // /**
-    //  * The registered items.
-    //  */
-    // items: Item[];
-    // /**
-    //  * History of items triggered.
-    //  */
-    // history: HyperId[];
-    /**
-     * How to sort the items results.
-     * 
-     * @default "ASC"
-     */
-    sortMode: SortMode;
+export interface PaletteItemConfig<T extends HyperItemType, Item = HyperItemTypeMap[T]> {
     /**
      * What set of items to display if there is no input.
      * 
      * @default "ALL"
      */
-    emptyMode: ResultsEmptyMode;
+    emptyMode?: ResultsEmptyMode;
     /**
-     * The shortcut to open the palette in the given mode.
-     */
-    shortcut: string[];
-    /**
-     * The function to map an item to a string for searching.
+     * Function to map the item to a searchable string of the desired item's properties.
      */
     mapToSearch: (item: Item) => string;
-};
+    /**
+     * Prefix used in the search input for setting the mode.
+     */
+    prefix: HyperItemPrefixMap[T];
+    /**
+     * Shortcut/s to open the palette in the given mode.
+     * 
+     * @default []
+     */
+    shortcut?: string[];
+    /**
+     * How to sort the items results.
+     * 
+     * @default "ASC"
+     */
+    sortMode?: SortMode;
+}
+
+export interface PaletteActionableConfig extends PaletteItemConfig<HyperCommandType> {
+    /**
+     * Defines if the palette should automatically close.
+     * 
+     * - `ALWAYS`: The palette will close after the action is canceled, successful or an error occurs.
+     * - `NEVER`: The palette will never close automatically.
+     * - `ON_TRIGGER`: The palette will close before starting the action.
+     * - `ON_CANCEL`: The palette will close after the action is canceled.
+     * - `ON_SUCCESS`: The palette will close after the action is successful.
+     * - `ON_ERROR`: The palette will close after an error occurs.
+     * 
+     * @default "ALWAYS"
+     */
+    closeOn: ActionableCloseOn;
+}
+
+export interface PaletteNavigableConfig extends PaletteItemConfig<HyperPageType> {
+    /**
+     * Defines if the palette should automatically close.
+     * 
+     * - `ALWAYS`: The palette will close after the navigation is successful or an error occurs.
+     * - `NEVER`: The palette will never close automatically.
+     * - `ON_TRIGGER`: The palette will close before starting the navigation.
+     * - `ON_SUCCESS`: The palette will close after the navigation is successful.
+     * - `ON_ERROR`: The palette will close after an error occurs.
+     * 
+     * @default "ALWAYS"
+     */
+    closeOn: NavigableCloseOn;
+    /**
+     * Hook to handle external navigations.
+     * 
+     * If returns a promise, the palette will wait for it to resolve before continuing.
+     * 
+     * @default (url) => window.open(url, '_blank', 'noopener')
+     */
+    onExternal: (url: string) => MaybePromise<void>;
+    /**
+     * Hook to handle local navigations.
+     * 
+     * If returns a promise, the palette will wait for it to resolve before continuing.
+     * 
+     * @default (url) => window.location.href = url
+     */
+    onLocal: (url: string) => MaybePromise<void>;
+    /**
+     * Hook to call when the user triggers the navigable item.
+     * 
+     * If returns a promise, the palette will wait for it to resolve before continuing.
+     * 
+     * If provided, the `onExternal` and `onLocal` hooks will not be called.
+     */
+    onNavigation: (page: HyperPage) => MaybePromise<void>;
+}
 
 export type PaletteItems =
-    | { [K in HyperCommandType]: PaletteItemConfig<HyperCommandType> }
-    & { [K in HyperPageType]: PaletteItemConfig<HyperPageType> & {
-        /**
-         * The hook to call when the user triggers a page navigation.
-         */
-        onNavigation: (page: HyperPage) => MaybePromise<void>;
-        /**
-         * The hook to call when the user triggers a page navigation to an external URL.
-         * When is provided the `onNavigation` hook will not be called.
-         * 
-         * If returns a promise, the palette will wait for it to resolve before continuing.
-         * 
-         * @default (url) => window.open(url, '_blank', 'noopener')
-         */
-        onNavigationExternal: (url: string) => MaybePromise<void>;
-        /**
-         * The hook to call when the user triggers a page navigation to a local URL.
-         * When is provided the `onNavigation` hook will not be called.
-         * 
-         * If returns a promise, the palette will wait for it to resolve before continuing.
-         * 
-         * @default (url) => window.location.href = url
-         */
-        onNavigationLocal: (url: string) => MaybePromise<void>;
-    } }
+    | { [K in HyperCommandType]: PaletteActionableConfig }
+    & { [K in HyperPageType]: PaletteNavigableConfig }
     & { [K in HyperCustomTypes]: PaletteItemConfig<K> & {
         /**
-         * The value used as the type discriminator for the custom item.
+         * The value used as discriminator for the custom item.
          */
         type: K;
     }; };
 
+export type PaletteItemsOptions =
+    | { [K in HyperCommandType]: PaletteActionableConfig }
+    & { [K in HyperPageType]: PaletteNavigableConfig }
+    & { [K in HyperCustomTypes]: PaletteItemConfig<K>; };
+
 export type HyperPaletteItemsOptions =
-    | { [K in HyperCommandType]: Partial<PaletteItemConfig<HyperCommandType>> }
-    & { [K in HyperPageType]: Partial<PaletteItemConfig<HyperPageType>> }
+    | { [K in HyperCommandType]: Partial<PaletteActionableConfig> }
+    & { [K in HyperPageType]: Partial<PaletteNavigableConfig> }
     & { [K in HyperCustomTypes]: PaletteItemConfig<K>; };
 
 export type HyperPaletteElements = {
@@ -358,13 +397,10 @@ export type HyperPaletteElements = {
     form: HTMLFormElement;
     label: HTMLLabelElement;
     input: HTMLInputElement;
-    command: HTMLElement;
-    pages: HTMLElement;
-    custom: HTMLElement;
 };
 
 export type HyperPaletteIds = {
-    [K in keyof Pick<HyperPaletteElements, 'palette' | 'panel' | 'form' | 'label' | 'input'>]: string;
+    [K in keyof HyperPaletteElements]: string;
 };
 
 export type HyperPaletteOptions = {
@@ -378,18 +414,25 @@ export type HyperPaletteOptions = {
      */
     closeAction: PaletteCloseAction;
     /**
-     * Defines when to close the palette.
+     * Whether to close the palette when the user clicks outside of it.
      * 
-     * - `ALWAYS`: The palette will close after the action is canceled, successful or an error occurs.
-     * - `NEVER`: The palette will never close automatically.
-     * - `ON_TRIGGER`: The palette will close before starting the action.
-     * - `ON_CANCEL`: The palette will close after the action is canceled.
-     * - `ON_SUCCESS`: The palette will close after the action is successful.
-     * - `ON_ERROR`: The palette will close after an error occurs.
-     * 
-     * @default "ALWAYS"
+     * @default true
      */
-    closeOn: PaletteCloseOn;
+    closeOnClickOutside: boolean;
+    /**
+     * Whether to close the palette when the user presses the escape key.
+     * 
+     * @default true
+     */
+    closeOnEscape: boolean;
+    /**
+     * Debounce time for processing the search input in milliseconds.
+     * 
+     * A value greater than 0 will debounce the input. Otherwise, the input will be processed immediately.
+     * 
+     * @default 150
+     */
+    debounce: number;
     /**
      * Default input text when the palette is opened.
      * 
@@ -403,17 +446,17 @@ export type HyperPaletteOptions = {
      */
     defaultMode: PaletteMode;
     /**
-     * Placeholder for the search input.
-     * 
-     * @default "Search pages... use > to search commands..."
-     */
-    defaultPlaceholder: string | false;
-    /**
      * Whether the palette should be open by default.
      * 
      * @default false
      */
     defaultOpen: boolean;
+    /**
+     * Placeholder for the search input.
+     * 
+     * @default "Search pages... use > to search commands..."
+     */
+    defaultPlaceholder: string | false;
     /**
      * Ids for the different elements of the palette.
      * 
@@ -424,9 +467,10 @@ export type HyperPaletteOptions = {
      * The configuration for the different types of items in the palette.
      * 
      * Providing more items than the default types will create a custom items in the palette.
-     * The types can be Registered in the `Register` interface under the `HyperCustomTypes` prop in the `svelte-hypercommands` module.
+     * 
+     * The types for the custom ones can be Registered in the `Register` interface under the `HyperCustomTypes` prop in the `svelte-hypercommands` module.
      */
-    itemsOptions: HyperPaletteItemsOptions;
+    itemsOptions: PaletteItemsOptions;
     /**
      * A `Writable` store to control the open state of the palette from outside.
      */
@@ -446,7 +490,7 @@ export type HyperPaletteOptions = {
      * 
      * Using `true` will override the `closeAction` option.
      * 
-     * @default true
+     * @default false
      */
     resetOnOpen: boolean;
     /**
@@ -459,11 +503,15 @@ export type HyperPaletteOptions = {
     }>;
 };
 
-export type CreatePaletteOptions = Partial<Pick<
-    HyperPaletteOptions,
-    | 'closeAction' | 'closeOn'
-    | 'defaultSearch' | 'defaultMode' | 'defaultPlaceholder' | 'defaultOpen'
-    | 'ids' | 'itemsOptions'
-    | 'open' | 'portal' | 'resetOnOpen'
-    | 'selected'
->>;
+export type CreatePaletteOptions = Partial<
+    Pick<
+        HyperPaletteOptions,
+        | 'closeAction' | 'closeOnClickOutside' | 'closeOnEscape'
+        | 'debounce'
+        | 'defaultSearch' | 'defaultMode' | 'defaultPlaceholder' | 'defaultOpen'
+        | 'ids'
+        | 'open' | 'portal' | 'resetOnOpen'
+        | 'selected'
+    >
+    & { itemsOptions: HyperPaletteItemsOptions; }
+>;

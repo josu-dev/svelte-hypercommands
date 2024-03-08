@@ -5,9 +5,9 @@ import { derived } from 'svelte/store';
 export function noop() { }
 
 /**
- * Create a store that always returns the same value and never changes.
+ * Create a store from the initial value and never update it.
  * 
- * Only for consistency with derived stores.
+ * Side effects free.
  */
 export function lightable<T>(value: T): Readable<T> {
     function subscribe(run: Subscriber<T>): Unsubscriber {
