@@ -1,21 +1,50 @@
 import type { Register } from '$lib/index.js';
 import type { HyperId } from '$lib/internal/index.js';
-import type { MaybePromise } from '$lib/utils/index.js';
+import type { MaybePromise, Values } from '$lib/utils/index.js';
 import type { Writable } from 'svelte/store';
+import type * as C from './constants.js';
 
-export type HyperCommandType = "COMMAND";
+export type HyperCommandType = typeof C.HYPER_ITEM_TYPE.COMMAND;
 
-export type HyperPageType = "PAGE";
+export type HyperItemType = Values<typeof C.HYPER_ITEM_TYPE>;
 
-export type HyperItemType = HyperCommandType | HyperPageType;
+export type HyperPageType = typeof C.HYPER_ITEM_TYPE.PAGE;
 
-export type PaletteMode = "PAGES" | "COMMANDS";
+export type PaletteMode = Values<typeof C.PALETTE_MODE>;
 
-export type ResultsEmptyMode = 'ALL' | 'HISTORY' | 'NONE';
+export type PaletteCloseAction = Values<typeof C.PALETTE_CLOSE_ACTION>;
 
-export type SortMode = 'ASC' | 'DESC' | 'NONE';
+export type PaletteCloseOn = Values<typeof C.PALETTE_CLOSE_ON>;
+
+export type ResultsEmptyMode = Values<typeof C.RESULTS_EMPTY_MODE>;
+
+export type SortMode = Values<typeof C.SORT_MODE>;
 
 export type CommandPaletteOptions = {
+    /**
+     * Defines the action to take when the palette is closed.
+     * 
+     * - `RESET`: Resets the state to its initial value.
+     * - `RESET_CLOSE`: Resets the state and closes the palette.
+     * - `KEEP`: Keeps the state as is.
+     * - `KEEP_CLOSE`: Keeps the state and closes the palette.
+     * 
+     * @default "RESET_CLOSE"
+     */
+    closeAction?: PaletteCloseAction;
+    /**
+     * Defines when to close the palette.
+     * 
+     * - `ALWAYS`: The palette will close after the action is canceled, successful or an error occurs.
+     * - `ON_REQUEST`: The palette will close before starting the action.
+     * - `ON_CANCEL`: The palette will close after the action is canceled.
+     * - `ON_SUCCESS`: The palette will close after the action is successful.
+     * - `ON_ERROR`: The palette will close after an error occurs.
+     * - `NEVER`: The palette will never close automatically.
+     * 
+     * @default "ALWAYS"
+     */
+    closeOn?: PaletteCloseOn;
     /**
      * Commands to display in the commands mode of the palette.
      */
@@ -146,6 +175,7 @@ export type CommandPaletteOptions = {
 
 export type CreateCommandPaletteOptions = Pick<
     CommandPaletteOptions,
+    | 'closeAction' | 'closeOn'
     | 'commandsEmptyMode' | 'commandsHistory' | 'commandsSortMode'
     | 'defaultInputText' | 'defaultOpen'
     | 'onNavigation' | 'onNavigationExternal' | 'onNavigationLocal' | 'open'
@@ -189,13 +219,13 @@ export type HyperCommand = {
      */
     id: HyperId;
     /**
-     * The category of the HyperCommand. Can be used to group commands in the palette.
-     */
-    category: string;
-    /**
      * The display name of the HyperCommand.
      */
     name: string;
+    /**
+     * The category of the HyperCommand. Can be used to group commands in the palette.
+     */
+    category: string;
     /**
      * A description of the HyperCommand. Can be used to provide additional information in the palette.
      */
@@ -233,6 +263,18 @@ export type HyperCommand = {
      */
     onUnregister?: CommandUnregisterHook;
     /**
+     * Overrides the default close action for the palette when the command is executed.
+     * 
+     * @see {@link CommandPaletteOptions.closeAction} for more information.
+     */
+    closeAction?: PaletteCloseAction;
+    /**
+     * Overrides the default close on for the palette when the command is executed.
+     * 
+     * @see {@link CommandPaletteOptions.closeOn} for more information.
+     */
+    closeOn?: PaletteCloseOn;
+    /**
      * User-defined metadata of the shape `Record<string, unknown>`.
      * 
      * Can be set by extending the `Register` interface with the `HyperPageMeta` prop in the `svelte-hypercommands` module.
@@ -243,7 +285,7 @@ export type HyperCommand = {
 export type HyperCommandDefinition =
     | Pick<HyperCommand, 'name' | 'onAction'>
     & { id?: string; shortcut?: string | string[]; }
-    & Partial<Pick<HyperCommand, 'category' | 'description' | 'keywords' | 'onRequest' | 'onError' | 'onUnregister' | 'meta'>>;
+    & Partial<Pick<HyperCommand, 'category' | 'description' | 'keywords' | 'onRequest' | 'onError' | 'onUnregister' | 'closeAction' | 'closeOn' | 'meta'>>;
 
 export type HyperPageMeta = Register extends { HyperPageMeta: infer _Meta; }
     ? (

@@ -4,4 +4,7 @@ export { HyperCommandError } from './command_palette/errors.js';
 export { defineCommand, definePage, definePagesFromRoutes, getAppRoutes, shortcutToKbd } from './command_palette/helpers.js';
 export type { CreateCommandPaletteOptions, HyperCommand, HyperPage } from './command_palette/types.js';
 
+// god
+export type { CreatePaletteOptions } from './hyper_palette/types.js';
+
 export interface Register { }

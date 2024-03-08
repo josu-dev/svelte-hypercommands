@@ -1,5 +1,5 @@
 import { useClickOutside, usePortal } from '$lib/actions.js';
-import { hyperId, log, noopCleanup, stringAsHyperId, type HyperId } from '$lib/internal/index.js';
+import { hyperId, log, noop, stringAsHyperId, type HyperId } from '$lib/internal/index.js';
 import { addKeyBinding } from '$lib/keyboard/index.js';
 import { Searcher } from '$lib/search/index.js';
 import { exposeWritable, writableExposed, type WritableExposed } from '$lib/stores/index.js';
@@ -7,7 +7,7 @@ import type { OneOrMany } from '$lib/utils/index.js';
 import { tick } from 'svelte';
 import { derived, get, type Writable } from 'svelte/store';
 import { builder } from './builder.js';
-import { PALETTE_ITEM, PALETTE_MODE, PALETTE_MODE_PREFIX, RESULTS_EMPTY_MODE, SORT_MODE } from './constants.js';
+import { HYPER_ITEM_TYPE, PALETTE_CLOSE_ACTION, PALETTE_CLOSE_ON, PALETTE_MODE, PALETTE_MODE_PREFIX, RESULTS_EMPTY_MODE, SORT_MODE } from './constants.js';
 import { DuplicatedIdError } from './errors.js';
 import { normalizeCommand, normalizePage } from './helpers.js';
 import type {
@@ -35,6 +35,8 @@ function elementDataName(name?: string): string {
 }
 
 const DEFAULTS = {
+    closeAction: PALETTE_CLOSE_ACTION.RESET_CLOSE,
+    closeOn: PALETTE_CLOSE_ON.ALWAYS,
     commands: [],
     commandsEmptyMode: RESULTS_EMPTY_MODE.ALL,
     commandsHistory: [],
@@ -91,6 +93,9 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         // @ts-expect-error - open no infers the optional unsubscribe property
         _paletteCleanup.push(open.unsubscribe);
     }
+
+    const _closeAction = safeOptions.closeAction;
+    const _closeOn = safeOptions.closeOn;
 
     const inputText = writableExposed(safeOptions.defaultInputText);
     const paletteMode = writableExposed<PaletteMode>(PALETTE_MODE.PAGES);
@@ -196,6 +201,14 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         _openPalette(paletteMode.value);
     }
 
+    function openPaletteCommands() {
+        _openPalette(PALETTE_MODE.COMMANDS);
+    }
+
+    function openPalettePages() {
+        _openPalette(PALETTE_MODE.PAGES);
+    }
+
     function closePalette() {
         if (open.value) {
             open.set(false);
@@ -280,6 +293,10 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         currentCommand.set(undefined);
         clearInput();
         searchFn('');
+    }
+
+    function resetCurrentState() {
+
     }
 
     function updateResults(force = false) {
@@ -735,8 +752,8 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
 
     function registerDefaultShortcuts() {
         const cleanupShortcuts = [
-            addKeyBinding(window, '$mod+Shift+P', shortcutOpenCommandPalette) ?? noopCleanup,
-            addKeyBinding(window, '$mod+P', shortcutOpenPagePalette) ?? noopCleanup,
+            addKeyBinding(window, '$mod+Shift+P', shortcutOpenCommandPalette) ?? noop,
+            addKeyBinding(window, '$mod+P', shortcutOpenPagePalette) ?? noop,
         ];
 
         commandsShortcutsCleanup.set(stringAsHyperId('OPEN_PALETTE'), cleanupShortcuts);
@@ -802,7 +819,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         stores: [],
         returned: () => {
             return {
-                id: ids.panel,
+                id: ids.panel
             };
         },
         action: (node) => {
@@ -848,7 +865,7 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
                     selectedEl.set(domElement);
                 }
 
-                if (item.type === PALETTE_ITEM.PAGE) {
+                if (item.type === HYPER_ITEM_TYPE.PAGE) {
                     navigateToPage(item, { type: 'keyboard' });
                     return;
                 }
@@ -940,9 +957,12 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
                     prevResult();
                 } else if (event.key === 'Escape') {
                     event.preventDefault();
+                    event.stopImmediatePropagation();
                     resetPalette();
-                } else if (event.key === 'Tab') {
+                }
+                else if (event.key === 'Tab') {
                     event.preventDefault();
+                    event.stopImmediatePropagation();
                 }
             }
             node.addEventListener('keydown', onKeydown);
@@ -1086,9 +1106,10 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
             registerCommand,
             unregisterCommand,
             search: searchFn,
+            openAsCommands: openPaletteCommands,
             openPalette,
+            openAsPages: openPalettePages,
             closePalette,
-            togglePalette: togglePaletteOpen,
             registerDefaultShortcuts,
             registerPage,
             unregisterPage,

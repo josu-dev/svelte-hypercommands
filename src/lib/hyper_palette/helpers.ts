@@ -1,9 +1,7 @@
-import { hyperId, type HyperId } from '$lib/internal/index.js';
+import { hyperId, noop, type HyperId } from '$lib/internal/index.js';
 import type { OneOrMany } from '$lib/utils/index.js';
 import { HYPER_ITEM_TYPE } from './constants.js';
-import type { HyperCommand, HyperCommandDefinition, HyperPage, HyperPageDefinition } from './types.js';
-
-function noopRequest(): void { }
+import type { HyperCommand, HyperCommandDefinition, HyperCustomItem, HyperCustomItemDefinition, HyperCustomTypes, HyperPage, HyperPageDefinition } from './types.js';
 
 export function normalizeCommand(command: HyperCommandDefinition): HyperCommand {
     return {
@@ -12,9 +10,8 @@ export function normalizeCommand(command: HyperCommandDefinition): HyperCommand 
         name: command.name,
         category: command.category ?? '',
         description: command.description ?? '',
-        keywords: command.keywords ?? [],
         shortcut: Array.isArray(command.shortcut) ? command.shortcut : command.shortcut ? [command.shortcut] : [],
-        onRequest: command.onRequest ?? noopRequest,
+        onRequest: command.onRequest ?? noop,
         onAction: command.onAction,
         onError: command.onError,
         onUnregister: command.onUnregister,
@@ -34,7 +31,6 @@ export function defineCommand(commands: OneOrMany<HyperCommandDefinition>): Hype
 
     return normalizedCommands;
 }
-
 
 export function normalizePage(page: HyperPageDefinition): HyperPage {
     const external = !page.url.startsWith('/');
@@ -78,21 +74,38 @@ export function definePage(pages: OneOrMany<HyperPageDefinition>): HyperPage[] {
     return normalizedPage;
 }
 
+export function normalizeCustomItem(item: HyperCustomItemDefinition): HyperCustomItem<HyperCustomTypes> {
+    return {
+        type: item.type,
+        id: item.id ?? hyperId(),
+        name: item.name,
+        category: item.category ?? '',
+        shortcut: Array.isArray(item.shortcut) ? item.shortcut : item.shortcut ? [item.shortcut] : [],
+        onRequest: item.onRequest ?? noop,
+        onAction: item.onAction,
+        onError: item.onError,
+        onUnregister: item.onUnregister,
+        closeAction: item.closeAction,
+        closeOn: item.closeOn,
+        meta: item.meta ?? {},
+    };
+}
 
-export function getAppRoutes(): { name: string; path: string; }[] {
-    const modules = import.meta.glob('/src/**/+page.svelte');
-    const routes = [];
-    for (const path in modules) {
-        const name = path.slice(11, path.length > 24 ? -13 : -12);
-        routes.push({ name, path });
+export function defineCustomItem<T extends HyperCustomTypes>(item: OneOrMany<HyperCustomItemDefinition<T>>): HyperCustomItem<T>[] {
+    item = Array.isArray(item) ? item : [item];
+
+    const normalizedItems = [];
+    for (const i of item) {
+        normalizedItems.push(normalizeCustomItem(i));
     }
-    return routes;
+
+    return normalizedItems;
 }
 
 const dinamicRouteRegex = /\/\[[^\]]+\]/i;
 
 export function definePagesFromRoutes({ rootName = 'root' } = { rootName: 'root' }): HyperPage[] {
-    const modules = import.meta.glob('/src/**/+page.svelte');
+    const modules = import.meta.glob('/src/routes/**/+page.svelte');
     const pages: HyperPage[] = [];
     for (const path in modules) {
         if (dinamicRouteRegex.test(path)) {
@@ -107,6 +120,15 @@ export function definePagesFromRoutes({ rootName = 'root' } = { rootName: 'root'
     return pages;
 }
 
+export function getProjectRoutes(): { name: string; path: string; }[] {
+    const modules = import.meta.glob('/src/routes/**/+page.svelte');
+    const routes = [];
+    for (const path in modules) {
+        const name = path.slice(11, path.length > 24 ? -13 : -12);
+        routes.push({ name, path });
+    }
+    return routes;
+}
 
 export function shortcutToKbd(shortcut: string): string[] {
     const parts = shortcut.split('+');
