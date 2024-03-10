@@ -43,3 +43,5 @@ export const SORT_MODE = {
     DESC: 'DESC',
     NONE: 'NONE',
 } as const;
+
+export const PALETTE_ELEMENTS = ['palette', 'panel', 'form', 'label', 'input'] as const;

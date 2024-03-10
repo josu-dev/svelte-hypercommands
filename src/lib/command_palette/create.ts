@@ -94,9 +94,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         _paletteCleanup.push(open.unsubscribe);
     }
 
-    const _closeAction = safeOptions.closeAction;
-    const _closeOn = safeOptions.closeOn;
-
     const inputText = writableExposed(safeOptions.defaultInputText);
     const paletteMode = writableExposed<PaletteMode>(PALETTE_MODE.PAGES);
 
@@ -293,10 +290,6 @@ export function createCommandPalette(options: CreateCommandPaletteOptions = {}) 
         currentCommand.set(undefined);
         clearInput();
         searchFn('');
-    }
-
-    function resetCurrentState() {
-
     }
 
     function updateResults(force = false) {

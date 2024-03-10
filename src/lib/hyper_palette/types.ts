@@ -1,5 +1,7 @@
 import type { Register } from '$lib/index.js';
 import type { HyperId } from '$lib/internal/index.js';
+import type { AnyRecord, Searcher } from '$lib/search/index.js';
+import type { WritableExposed } from '$lib/stores/index.js';
 import type { MaybePromise, Values } from '$lib/utils/index.js';
 import type { Writable } from 'svelte/store';
 import type * as C from './constants.js';
@@ -78,7 +80,7 @@ export type PaletteCloseAction = Values<typeof C.PALETTE_CLOSE_ACTION>;
 
 export type ActionableCloseOn = Values<typeof C.ACTIONABLE_CLOSE_ON>;
 
-export type NavigableCloseOn = Values<typeof C.ACTIONABLE_CLOSE_ON>;
+export type NavigableCloseOn = Values<typeof C.NAVIGABLE_CLOSE_ON>;
 
 export type ResultsEmptyMode = Values<typeof C.RESULTS_EMPTY_MODE>;
 
@@ -198,7 +200,7 @@ export interface HyperCommand extends HyperItemBase, HyperItemIdentifier<HyperCo
     /**
      * Overrides the default close on for HyperCommands.
      * 
-     * @see {@link HyperPaletteOptions.itemsOptions} for more information.
+     * @see {@link HyperPaletteOptions.items} for more information.
      */
     closeOn?: ActionableCloseOn;
     /**
@@ -244,7 +246,7 @@ export interface HyperPage extends HyperItemIdentifier<HyperPageType> {
     /**
      * Overrides the default close on for HyperPages.
      * 
-     * @see {@link HyperPaletteOptions.itemsOptions} for more information.
+     * @see {@link HyperPaletteOptions.items} for more information.
      */
     closeOn?: NavigableCloseOn;
     /**
@@ -368,28 +370,49 @@ export interface PaletteNavigableConfig extends PaletteItemConfig<HyperPageType>
      * 
      * If provided, the `onExternal` and `onLocal` hooks will not be called.
      */
-    onNavigation: (page: HyperPage) => MaybePromise<void>;
+    onNavigation: (item: HyperPage) => MaybePromise<void>;
+    /**
+     * Hook to handle errors during the navigation.
+     * 
+     * If not provided, the error will be silently ignored.
+     */
+    onError?: (args: { error: unknown, item: HyperPage, source: ItemRequestSource; }) => MaybePromise<void>;
+}
+
+export interface PaletteCustomConfig<T extends HyperCustomTypes> extends PaletteItemConfig<T> {
+    /**
+     * The value used as discriminator for the custom item.
+     */
+    type: T;
+}
+
+export interface HyperCommandConfig extends PaletteActionableConfig {
+    /**
+     * Whether default command mode is enabled.
+     * 
+     * @default true
+     */
+    enabled: boolean;
+}
+
+export interface HyperPageConfig extends PaletteNavigableConfig {
+    /**
+     * Whether default page mode is enabled.
+     * 
+     * @default true
+     */
+    enabled: boolean;
 }
 
 export type PaletteItems =
-    | { [K in HyperCommandType]: PaletteActionableConfig }
-    & { [K in HyperPageType]: PaletteNavigableConfig }
-    & { [K in HyperCustomTypes]: PaletteItemConfig<K> & {
-        /**
-         * The value used as discriminator for the custom item.
-         */
-        type: K;
-    }; };
-
-export type PaletteItemsOptions =
-    | { [K in HyperCommandType]: PaletteActionableConfig }
-    & { [K in HyperPageType]: PaletteNavigableConfig }
-    & { [K in HyperCustomTypes]: PaletteItemConfig<K>; };
+    | { [K in HyperCommandType]: HyperCommandConfig }
+    & { [K in HyperPageType]: HyperPageConfig }
+    & { [K in HyperCustomTypes]: PaletteCustomConfig<K> };
 
 export type HyperPaletteItemsOptions =
-    | { [K in HyperCommandType]: Partial<PaletteActionableConfig> }
-    & { [K in HyperPageType]: Partial<PaletteNavigableConfig> }
-    & { [K in HyperCustomTypes]: PaletteItemConfig<K>; };
+    | { [K in HyperCommandType]: Partial<HyperCommandConfig> }
+    & { [K in HyperPageType]: Partial<HyperPageConfig> }
+    & { [K in HyperCustomTypes]: PaletteCustomConfig<K> };
 
 export type HyperPaletteElements = {
     palette: HTMLElement;
@@ -401,6 +424,12 @@ export type HyperPaletteElements = {
 
 export type HyperPaletteIds = {
     [K in keyof HyperPaletteElements]: string;
+};
+
+export type HyperPaletteSelected = {
+    el: HTMLElement | undefined;
+    idx: number;
+    id: HyperId | string | undefined;
 };
 
 export type HyperPaletteOptions = {
@@ -434,6 +463,8 @@ export type HyperPaletteOptions = {
      */
     debounce: number;
     /**
+     * @deprecated Not supported yet.
+     * 
      * Default input text when the palette is opened.
      * 
      * @default ""
@@ -470,7 +501,7 @@ export type HyperPaletteOptions = {
      * 
      * The types for the custom ones can be Registered in the `Register` interface under the `HyperCustomTypes` prop in the `svelte-hypercommands` module.
      */
-    itemsOptions: PaletteItemsOptions;
+    items: PaletteItems;
     /**
      * A `Writable` store to control the open state of the palette from outside.
      */
@@ -513,5 +544,29 @@ export type CreatePaletteOptions = Partial<
         | 'open' | 'portal' | 'resetOnOpen'
         | 'selected'
     >
-    & { itemsOptions: HyperPaletteItemsOptions; }
+    & {
+        ids: Partial<HyperPaletteIds>;
+        items: HyperPaletteItemsOptions;
+    }
 >;
+
+export type PaletteError<T extends HyperItemType = HyperItemType> = {
+    error: unknown;
+    type: T;
+    item: HyperItemTypeMap[T];
+    source: ItemRequestSource;
+};
+
+export type PaletteModeState<T extends HyperItemType = HyperItemType, Item extends AnyRecord = HyperItemTypeMap[T]> =
+    {
+        type: T;
+        config: PaletteItems[T];
+        items: WritableExposed<Item[]>;
+        results: WritableExposed<Item[]>;
+        history: WritableExposed<HyperId[]>;
+        searcher: Searcher<Item>;
+        current: WritableExposed<Item | undefined>;
+        rawAll: Item[];
+        rawAllSorted: Item[];
+        lastInput: string;
+    };
