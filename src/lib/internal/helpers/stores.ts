@@ -1,6 +1,5 @@
-import { writable, type Readable, type Unsubscriber, type Writable } from 'svelte/store';
-
-export type { Readable, Writable };
+import type { Readable, Unsubscriber, Writable } from 'svelte/store';
+import { writable } from 'svelte/store';
 
 export type StoreValue<T> = T extends Readable<infer V> ? V : never;
 

@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { defineCommand } from '$lib/command_palette/helpers.js';
-  import { helpers, states } from '$lib/default/CommandPalette.svelte';
+  import { defineActionable } from '$lib/index.js';
+  import { helpers, states } from '$lib/default/HyperPalette.svelte';
   import { onDestroy } from 'svelte';
 
-  const command = defineCommand([
+  const command = defineActionable([
     {
       id: 'dynamic-command-1',
       name: 'Dynamic console log',

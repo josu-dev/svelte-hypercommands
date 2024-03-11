@@ -1,11 +1,11 @@
-export class HyperCommandError extends Error {
+export class HyperPaletteError extends Error {
     constructor(message: string) {
         super(message);
         this.name = 'HyperPaletteError';
     }
 }
 
-export class DuplicatedIdError extends HyperCommandError {
+export class DuplicatedIdError extends HyperPaletteError {
     readonly id: string | undefined;
 
     constructor(message: string, id: string | undefined = undefined) {

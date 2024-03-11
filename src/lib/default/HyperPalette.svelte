@@ -1,11 +1,18 @@
 <script lang="ts" context="module">
   import type {
     HyperActionable,
+    HyperActionableDefinition,
     HyperNavigable,
+    HyperNavigableDefinition,
     ItemMatcher,
     OneOrMany,
-  } from '../index.js';
-  import { HYPER_ITEM_TYPE, createPalette } from '../index.js';
+  } from '$lib/index.js';
+  import {
+    HYPER_ITEM,
+    createPalette,
+    defineActionable,
+    defineNavigable,
+  } from '$lib/index.js';
 
   export const MODE = {
     COMMANDS: 'commands',
@@ -18,13 +25,13 @@
     },
     items: {
       commands: {
-        type: HYPER_ITEM_TYPE.ACTIONABLE,
+        type: HYPER_ITEM.ACTIONABLE,
         prefix: '>',
         mapToSearch: (command) => command.category + command.name,
         shortcut: ['$mod+Shift+P'],
       },
       pages: {
-        type: HYPER_ITEM_TYPE.NAVIGABLE,
+        type: HYPER_ITEM.NAVIGABLE,
         prefix: '',
         mapToSearch: (page) => page.name + page.urlHostPathname,
         shortcut: ['$mod+P'],
@@ -34,21 +41,21 @@
   });
 
   function registerCommand(items: OneOrMany<HyperActionable>) {
-    return state.helpers.registerItem('commands', items);
+    return state.helpers.registerItem(MODE.COMMANDS, items);
   }
 
   function registerPage(items: OneOrMany<HyperNavigable>) {
-    return state.helpers.registerItem('pages', items);
+    return state.helpers.registerItem(MODE.PAGES, items);
   }
 
   function unregisterCommand(
     selector: OneOrMany<ItemMatcher<HyperActionable>>,
   ) {
-    return state.helpers.unregisterItem('commands', selector);
+    return state.helpers.unregisterItem(MODE.COMMANDS, selector);
   }
 
   function unregisterPage(selector: OneOrMany<ItemMatcher<HyperNavigable>>) {
-    return state.helpers.unregisterItem('pages', selector);
+    return state.helpers.unregisterItem(MODE.PAGES, selector);
   }
 
   export const elements = state.elements;
@@ -58,8 +65,8 @@
     registerPage,
     unregisterCommand,
     unregisterPage,
-    openAsCommands: () => state.helpers.openPalette('commands'),
-    openAsPages: () => state.helpers.openPalette('pages'),
+    openAsCommands: () => state.helpers.openPalette(MODE.COMMANDS),
+    openAsPages: () => state.helpers.openPalette(MODE.PAGES),
     toggleOpen: () => state.helpers.togglePalette(),
     close: () => state.helpers.closePalette(),
     search: (query: string) => state.helpers.search(query),
@@ -67,13 +74,18 @@
     unregisterDefaultShortcuts: () =>
       state.helpers.unregisterPaletteShortcuts(),
   };
+  export function defineCommand(items: OneOrMany<HyperActionableDefinition>) {
+    return defineActionable(items);
+  }
+  export function definePage(items: OneOrMany<HyperNavigableDefinition>) {
+    return defineNavigable(items);
+  }
 </script>
 
 <script lang="ts">
+  import { shortcutToKbd, type Cleanup } from '$lib/index.js';
+  import { isBrowser } from '$lib/internal/helpers/index.js';
   import { onMount } from 'svelte';
-  import { shortcutToKbd } from '../index.js';
-  import { isBrowser } from '../internal/index.js';
-  import { removeAllKeyBindings } from '../keyboard/keystroke.js';
 
   export let commands: HyperActionable[] = [];
   export let pages: HyperNavigable[] = [];
@@ -85,8 +97,8 @@
   const { results: matchingCommands } = items.commands;
   const { results: matchingPages } = items.pages;
 
-  let unregisterCommands: () => void;
-  let unregisterPages: () => void;
+  let unregisterCommands: Cleanup;
+  let unregisterPages: Cleanup;
 
   $: if (isBrowser) {
     unregisterCommands?.();
@@ -98,13 +110,9 @@
   }
 
   onMount(() => {
-    // TODO: This should be done in a better way?
-
     return () => {
       unregisterCommands?.();
       unregisterPages?.();
-      // ensure that all keybindings are removed in case of hot reload?
-      removeAllKeyBindings(window);
     };
   });
 </script>

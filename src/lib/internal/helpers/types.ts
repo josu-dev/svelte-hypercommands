@@ -73,3 +73,5 @@ export type DeepPartial<T> = {
     ? DeepPartial<T[K]>
     : T[K];
 };
+
+export type Cleanup = () => void;

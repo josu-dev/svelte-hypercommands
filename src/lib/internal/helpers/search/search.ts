@@ -1,4 +1,4 @@
-import type { OneOrMany } from '$lib/utils/index.js';
+import type { OneOrMany } from '$lib/internal/helpers/types.js';
 
 export type SearchableItem<T extends Record<PropertyKey, any>> = {
     item: T;

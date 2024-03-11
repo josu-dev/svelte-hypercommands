@@ -1,6 +1,6 @@
 <script lang="ts">
   import { defineActionable } from '$lib/index.js';
-  import { helpers, states } from '$lib/palette/HyperPalette.svelte';
+  import { helpers, states } from '$lib/default/HyperPalette.svelte';
   import { onDestroy } from 'svelte';
 
   const commands = defineActionable([

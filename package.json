@@ -1,7 +1,7 @@
 {
   "name": "svelte-hypercommands",
   "version": "0.0.12",
-  "description": "A headless Command Palette for your Svelte app",
+  "description": "A Headless Palette for your Svelte app",
   "keywords": [
     "sveltekit",
     "svelte",
@@ -35,9 +35,9 @@
       "types": "./dist/index.d.ts",
       "svelte": "./dist/index.js"
     },
-    "./CommandPalette.svelte": {
-      "types": "./dist/default/CommandPalette.svelte.d.ts",
-      "svelte": "./dist/default/CommandPalette.svelte"
+    "./HyperPalette.svelte": {
+      "types": "./dist/default/HyperPalette.svelte.d.ts",
+      "svelte": "./dist/default/HyperPalette.svelte"
     }
   },
   "typesVersions": {
@@ -45,8 +45,8 @@
       "index.d.ts": [
         "./dist/index.d.ts"
       ],
-      "CommandPalette.svelte": [
-        "./dist/default/CommandPalette.svelte.d.ts"
+      "HyperPalette.svelte": [
+        "./dist/palette/HyperPalette.svelte.d.ts"
       ]
     }
   },

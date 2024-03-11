@@ -1,8 +1,5 @@
 import type { Register } from '$lib/index.js';
-import type { HyperId } from '$lib/internal/index.js';
-import type { AnyRecord, Searcher } from '$lib/search/index.js';
-import type { WritableExposed } from '$lib/stores/index.js';
-import type { DeepPartial, MaybePromise, OneOrMany, Values } from '$lib/utils/index.js';
+import type { AnyRecord, Cleanup, DeepPartial, HyperId, MaybePromise, OneOrMany, Searcher, Values, WritableExposed } from '$lib/internal/helpers/index.js';
 import type { Writable } from 'svelte/store';
 import type * as C from './constants.js';
 
@@ -10,13 +7,13 @@ import type * as C from './constants.js';
 // Constants
 //
 
-export type HyperItemType = Values<typeof C.HYPER_ITEM_TYPE>;
+export type HyperItemType = Values<typeof C.HYPER_ITEM>;
 
-export type HyperActionableType = typeof C.HYPER_ITEM_TYPE.ACTIONABLE;
+export type HyperActionableType = typeof C.HYPER_ITEM.ACTIONABLE;
 
-export type HyperNavigableType = typeof C.HYPER_ITEM_TYPE.NAVIGABLE;
+export type HyperNavigableType = typeof C.HYPER_ITEM.NAVIGABLE;
 
-export type HyperSearchableType = typeof C.HYPER_ITEM_TYPE.SEARCHABLE;
+export type HyperSearchableType = typeof C.HYPER_ITEM.SEARCHABLE;
 
 export type PaletteMode = string;
 
@@ -26,7 +23,7 @@ export type ActionableCloseOn = Values<typeof C.ACTIONABLE_CLOSE_ON>;
 
 export type NavigableCloseOn = Values<typeof C.NAVIGABLE_CLOSE_ON>;
 
-export type ResultsEmptyMode = Values<typeof C.RESULTS_EMPTY_MODE>;
+export type ResultsEmptyMode = Values<typeof C.NO_RESULTS_MODE>;
 
 export type SortMode = Values<typeof C.SORT_MODE>;
 
@@ -102,11 +99,11 @@ export type ActionableHookArgs<T extends HyperActionable = HyperActionable> = {
     source: ItemRequestSource;
 };
 
-export type ActionableRequest<T extends HyperActionable = HyperActionable, RT = void> = (args: ActionableHookArgs<T>) => MaybePromise<false | RT>;
+export type ActionableRequest<T extends HyperActionable = HyperActionable, RT = any> = (args: ActionableHookArgs<T>) => MaybePromise<false | RT>;
 
-export type ActionableAction<T extends HyperActionable = HyperActionable, RT = void> = (args: ActionableHookArgs<T> & { rargs: RT; }) => MaybePromise<void>;
+export type ActionableAction<T extends HyperActionable = HyperActionable, RT = any> = (args: ActionableHookArgs<T> & { rargs: RT; }) => MaybePromise<void>;
 
-export type ActionableError<T extends HyperActionable = HyperActionable> = (args: ActionableHookArgs<T> & { error: unknown; }) => MaybePromise<void>;
+export type ActionableError<T extends HyperActionable = HyperActionable> = (args: ActionableHookArgs<T> & { error: any; }) => MaybePromise<void>;
 
 export type ActionableUnregister<T extends HyperActionable = HyperActionable> = (item: T) => MaybePromise<void>;
 
@@ -229,8 +226,6 @@ export type ItemTypeToItem =
 export type AnyHyperItem = ItemTypeToItem[HyperItemType];
 
 export type ItemMatcher<T extends AnyHyperItem> = HyperItemId | T | ((item: T) => boolean);
-
-export type CleanupCallback = () => void;
 
 export type HyperItemBaseConfig<T extends HyperItemType> = {
     /**
@@ -547,7 +542,7 @@ export type PaletteItemsReturn<C extends PaletteItemsOptions> = {
 export type CreatePaletteReturn<C extends PaletteItemsOptions, Modes extends string = keyof C & string> = {
     elements: any;
     helpers: {
-        registerItem: <T extends Modes>(mode: T, item: OneOrMany<ItemTypeToItem[C[T]['type']]>, override?: boolean, silent?: boolean) => CleanupCallback;
+        registerItem: <T extends Modes>(mode: T, item: OneOrMany<ItemTypeToItem[C[T]['type']]>, override?: boolean, silent?: boolean) => Cleanup;
         unregisterItem: <T extends Modes>(mode: T, item: OneOrMany<ItemMatcher<ItemTypeToItem[C[T]['type']]>>) => void;
         search: (pattern: string) => void;
         openPalette: (mode?: Modes) => void;

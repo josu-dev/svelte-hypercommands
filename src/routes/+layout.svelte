@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { defineActionable, definePagesFromRoutes } from '$lib/index.js';
-  import HyperPalette from '$lib/palette/HyperPalette.svelte';
+  import HyperPalette, {
+    defineCommand,
+  } from '$lib/default/HyperPalette.svelte';
+  import { definePagesFromRoutes } from '$lib/index.js';
   import '../app.css';
 
-  const commands = defineActionable([
+  const commands = defineCommand([
     {
       id: 'global:copy_current_url',
       category: 'Global',

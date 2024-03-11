@@ -1,11 +1,11 @@
-import { hyperId, noop } from '$lib/internal/index.js';
-import type { OneOrMany } from '$lib/utils/index.js';
-import { HYPER_ITEM_TYPE } from './constants.js';
+import { hyperId, noop } from '$lib/internal/helpers/index.js';
+import type { OneOrMany } from '$lib/internal/helpers/types.js';
+import { HYPER_ITEM } from './constants.js';
 import type { HyperActionable, HyperActionableDefinition, HyperNavigable, HyperNavigableDefinition, HyperSearchable, HyperSearchableDefinition } from './types.js';
 
 export function normalizeActionable(item: HyperActionableDefinition): HyperActionable {
     return {
-        type: HYPER_ITEM_TYPE.ACTIONABLE,
+        type: HYPER_ITEM.ACTIONABLE,
         id: item.id ?? hyperId(),
         name: item.name,
         category: item.category ?? '',
@@ -53,7 +53,7 @@ export function normalizeNavigable(page: HyperNavigableDefinition): HyperNavigab
     const name = page.name ?? (cleanUrl.split('/').at(-1) || 'index');
 
     return {
-        type: HYPER_ITEM_TYPE.NAVIGABLE,
+        type: HYPER_ITEM.NAVIGABLE,
         id: page.url,
         name: name,
         url: page.url,
