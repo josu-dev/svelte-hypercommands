@@ -1,9 +1,9 @@
 <script lang="ts">
-  import CommandPalette from '$lib/default/CommandPalette.svelte';
-  import { defineCommand, definePagesFromRoutes } from '$lib/index.js';
+  import { defineActionable, definePagesFromRoutes } from '$lib/index.js';
+  import HyperPalette from '$lib/palette/HyperPalette.svelte';
   import '../app.css';
 
-  const commands = defineCommand([
+  const commands = defineActionable([
     {
       id: 'global:copy_current_url',
       category: 'Global',
@@ -30,6 +30,6 @@
   const pages = definePagesFromRoutes();
 </script>
 
-<CommandPalette {commands} {pages} />
+<HyperPalette {commands} {pages} />
 
 <slot />

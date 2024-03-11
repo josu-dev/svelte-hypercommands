@@ -1,100 +1,116 @@
 import { browser } from '$app/environment';
-import { hyperId, type HyperId } from '$lib/internal/index.js';
+import { use_clickoutside, use_portal } from '$lib/internal/actions.js';
+import { hyperId } from '$lib/internal/index.js';
+import { screenReaderStyle } from '$lib/internal/utils.js';
 import { addKeyBinding } from '$lib/keyboard/keystroke.js';
 import { Searcher } from '$lib/search/index.js';
 import { exposeWritable, writableExposed, type WritableExposed } from '$lib/stores/index.js';
 import type { OneOrMany } from '$lib/utils/index.js';
 import { tick } from 'svelte';
-import { ACTIONABLE_CLOSE_ON, DEFAULT_PALETTE_MODE, DEFAULT_PALETTE_MODE_PREFIX, NAVIGABLE_CLOSE_ON, PALETTE_CLOSE_ACTION, PALETTE_ELEMENTS, RESULTS_EMPTY_MODE, SORT_MODE } from './constants.js';
+import { builder } from './builder.js';
+import { ACTIONABLE_CLOSE_ON, HYPER_ITEM_TYPE, NAVIGABLE_CLOSE_ON, PALETTE_CLOSE_ACTION, PALETTE_ELEMENTS, RESULTS_EMPTY_MODE, SORT_MODE } from './constants.js';
 import { HyperCommandError } from './errors.js';
-import { type CleanupCallback, type CreatePaletteOptions, type HyperCommand, type HyperItem, type HyperItemType, type HyperItemTypeMap, type HyperPage, type HyperPaletteIds, type HyperPaletteOptions, type HyperPaletteSelected, type ItemMatcher, type ItemRequestSource, type PaletteActionableConfig, type PaletteError, type PaletteItems, type PaletteModeState, type PaletteNavigableConfig } from './types.js';
+import type { AnyHyperItem, CleanupCallback, CreatePaletteOptions, CreatePaletteReturn, HyperActionable, HyperItemConfig, HyperItemType, HyperNavigable, HyperNavigableConfiguration, HyperPaletteOptions, HyperSearchable, ItemMatcher, ItemRequestSource, PaletteError, PaletteIds, PaletteItemsOptions, PaletteModeState, PaletteSelected } from './types.js';
 
 const INTERNAL_KEY = {
     OPEN_PALETTE: '__hyper_open_palette',
     CLOSE_PALETTE: '__hyper_close_palette',
+    DATASET_HYPER_ID: 'dataHyperId',
 } as const;
+
+function elementName(name?: string): string {
+    return name ? `palette-${name}` : 'palette';
+}
+
+const itemModeDefaults = {
+    [HYPER_ITEM_TYPE.ACTIONABLE]: {
+        emptyMode: RESULTS_EMPTY_MODE.ALL,
+        shortcut: [],
+        sortMode: SORT_MODE.SORTED,
+        closeOn: ACTIONABLE_CLOSE_ON.ALWAYS,
+    },
+    [HYPER_ITEM_TYPE.NAVIGABLE]: {
+        emptyMode: RESULTS_EMPTY_MODE.ALL,
+        shortcut: [],
+        sortMode: SORT_MODE.SORTED,
+        onExternal: (url: string) => {
+            window.open(url, '_blank');
+        },
+        onLocal: (url: string) => {
+            window.location.href = url;
+        }
+    },
+    [HYPER_ITEM_TYPE.SEARCHABLE]: {
+        emptyMode: RESULTS_EMPTY_MODE.ALL,
+        shortcut: [],
+        sortMode: SORT_MODE.SORTED,
+    },
+};
 
 const defaults = {
     closeAction: PALETTE_CLOSE_ACTION.RESET,
     closeOnClickOutside: true,
     closeOnEscape: true,
     debounce: 150,
-    defaultSearch: '',
-    defaultMode: DEFAULT_PALETTE_MODE.PAGE,
-    defaultOpen: false,
-    defaultPlaceholder: `Search pages... use ${DEFAULT_PALETTE_MODE_PREFIX.COMMAND} to search commands...`,
-    items: {
-        COMMAND: {
-            closeOn: ACTIONABLE_CLOSE_ON.ALWAYS,
-            enabled: true,
-            emptyMode: RESULTS_EMPTY_MODE.ALL,
-            mapToSearch: (item) => {
-                return item.category + item.name;
-            },
-            prefix: DEFAULT_PALETTE_MODE_PREFIX.COMMAND,
-            shortcut: ['$mod+Shift+P'],
-            sortMode: SORT_MODE.DESC
-        },
-        PAGE: {
-            closeOn: NAVIGABLE_CLOSE_ON.ALWAYS,
-            enabled: true,
-            emptyMode: RESULTS_EMPTY_MODE.ALL,
-            mapToSearch: (item) => {
-                return item.url;
-            },
-            onExternal: (url) => {
-                window.open(url, '_blank', 'noopener');
-            },
-            onLocal: (url) => {
-                window.location.href = url;
-            },
-            onNavigation: (page) => {
-                if (page.external) {
-                    window.open(page.url, '_blank', 'noopener');
-                    return;
-                }
-                window.location.href = page.url;
-            },
-            prefix: DEFAULT_PALETTE_MODE_PREFIX.PAGE,
-            shortcut: ['$mod+P'],
-            sortMode: SORT_MODE.DESC
-        },
+    defaults: {
+        open: false,
+        searchText: '',
+        placeholder: undefined,
     },
     portal: false,
     resetOnOpen: false,
-} satisfies Omit<HyperPaletteOptions, 'ids' | 'open' | 'selected'>;
+} satisfies (
+        Omit<HyperPaletteOptions, 'defaults' | 'items' | 'open' | 'placeholder'>
+        & { defaults: Pick<HyperPaletteOptions['defaults'], 'open' | 'placeholder' | 'searchText'>; }
+    );
 
-function createActionableState(options: PaletteActionableConfig) {
-    return {
-        ...options,
-        items: writableExposed<HyperCommand[]>([]),
-        history: writableExposed<HyperId[]>([]),
-        searcher: new Searcher<HyperCommand>({
-            mapper: options.mapToSearch,
-        }),
-        current: writableExposed<HyperCommand | undefined>(undefined),
-        rawAll: [] as HyperCommand[],
-        rawFiltered: [] as HyperCommand[],
-    };
+function parseItemsConfig<T extends PaletteItemsOptions>(items: T) {
+    if (typeof items !== 'object' || items === null) {
+        throw new HyperCommandError(
+            `Invalid items configuration, expected Record<string, PaletteItemConfig> got ${typeof items}`
+        );
+    }
+
+    const safeItems = {} as any;
+    const registeredPrefixes = new Set<string>();
+    const validTypes = new Set<HyperItemType>(Object.values(HYPER_ITEM_TYPE));
+
+    for (const [mode, config] of Object.entries(items)) {
+        if (typeof config !== 'object' || config === null) {
+            throw new HyperCommandError(
+                `Invalid item configuration, expected PaletteItemConfig got ${typeof config}`
+            );
+        }
+        if (mode in safeItems) {
+            throw new HyperCommandError(`Duplicate item mode: ${mode}`);
+        }
+        if (registeredPrefixes.has(config.prefix)) {
+            throw new HyperCommandError(`Duplicate item prefix: ${config.prefix}`);
+        }
+        if (!validTypes.has(config.type as any)) {
+            throw new HyperCommandError(`Invalid item type: ${config.type}`);
+        }
+
+        safeItems[mode] = {
+            ...itemModeDefaults[config.type],
+            ...config,
+        };
+    }
+
+    return safeItems;
 }
 
-function createNavigableState(options: PaletteNavigableConfig) {
-    return {
-        ...options,
-        items: writableExposed<HyperPage[]>([]),
-        history: writableExposed<HyperId[]>([]),
-        searcher: new Searcher<HyperPage>({
-            mapper: options.mapToSearch,
-        }),
-        current: writableExposed<HyperPage | undefined>(undefined),
-        rawAll: [] as HyperPage[],
-        rawFiltered: [] as HyperPage[],
-    };
+function generateIds(initials: Partial<PaletteIds>): PaletteIds {
+    const ids = {} as PaletteIds;
+    for (const name of PALETTE_ELEMENTS) {
+        ids[name] = initials[name] || hyperId();
+    }
+    return ids;
 }
 
-function createModeState<T extends HyperItemType>(type: T, options: PaletteItems[T]): PaletteModeState<T> {
+function createModeState<T extends HyperItemConfig>(mode: string, options: T): PaletteModeState<T['type']> {
     return {
-        type: type,
+        mode: mode,
         config: options,
         items: writableExposed([]),
         results: writableExposed([]),
@@ -104,27 +120,32 @@ function createModeState<T extends HyperItemType>(type: T, options: PaletteItems
         rawAll: [],
         rawAllSorted: [],
         lastInput: '',
-    };
+    } as any;
 }
 
-function generateIds(initials: Partial<HyperPaletteIds>): HyperPaletteIds {
-    const ids = {} as HyperPaletteIds;
-    for (const name of PALETTE_ELEMENTS) {
-        ids[name] = initials[name] || hyperId();
-    }
-    return ids;
-}
-
-export function createPalette(options: CreatePaletteOptions = {}) {
+export function createPalette<T extends CreatePaletteOptions, Items extends T['items'], Modes extends keyof Items & string>(options: T): CreatePaletteReturn<Items> {
     const safeOptions = { ...defaults, ...options } as HyperPaletteOptions;
-    if (options.items) {
-        if (options.items.COMMAND) {
-            safeOptions.items.COMMAND = { ...defaults.items.COMMAND, ...options.items.COMMAND };
+    safeOptions.items = parseItemsConfig(safeOptions.items);
+    safeOptions.defaults = { ...defaults.defaults, ...safeOptions.defaults };
+
+    const _modes = new Map<string, PaletteModeState>();
+
+    for (const [mode, options] of Object.entries(safeOptions.items)) {
+        const state = createModeState(mode, options);
+        _modes.set(mode, state);
+    }
+
+    // TODO: make search text define the initial moder
+    let initialMode: PaletteModeState;
+    if (safeOptions.defaults.mode) {
+        // @ts-expect-error - is valid since the throw will stop the execution
+        initialMode = _modes.get(safeOptions.defaults.mode);
+        if (!initialMode) {
+            throw new HyperCommandError(`Invalid default mode: ${safeOptions.defaults.mode} is not registered`);
         }
-        if (options.items.PAGE) {
-            safeOptions.items.PAGE = { ...defaults.items.PAGE, ...options.items.PAGE };
-        }
-        // TODO: validate custom items
+    }
+    else {
+        initialMode = _modes.values().next().value;
     }
 
     const _internal_cleanup = new Map<string, CleanupCallback>();
@@ -141,53 +162,28 @@ export function createPalette(options: CreatePaletteOptions = {}) {
         open = _open;
     }
     else {
-        open = writableExposed(safeOptions.defaultOpen);
+        open = writableExposed(safeOptions.defaults.open);
     }
 
-    const ids = generateIds(safeOptions.ids ?? {});
+    // ids are optional must be nullish coalesced to avoid undefined
+    const ids = generateIds(safeOptions.defaults.ids ?? {});
+    // TODO: make search text define the initial mode
     const searchText = writableExposed('');
-    const paletteMode = writableExposed(safeOptions.defaultMode);
-    const error = writableExposed<PaletteError | undefined>(undefined);
+    // TODO: check if default mode exists, defualt to first if not passed in
+    const paletteMode = writableExposed(initialMode.mode);
+    const error = writableExposed<PaletteError<any> | undefined>(undefined);
     const portal = writableExposed(safeOptions.portal);
-    const placeholder = writableExposed(safeOptions.defaultPlaceholder);
+    const placeholder = writableExposed(safeOptions.defaults.placeholder);
     const debounce = writableExposed(safeOptions.debounce);
     const closeAction = writableExposed(safeOptions.closeAction);
     const closeOnClickOutside = writableExposed(safeOptions.closeOnClickOutside);
     const closeOnEscape = writableExposed(safeOptions.closeOnEscape);
     const resetOnOpen = writableExposed(safeOptions.resetOnOpen);
-    const selected = writableExposed<HyperPaletteSelected>({
+    const selected = writableExposed<PaletteSelected>({
         el: undefined,
         idx: -1,
         id: undefined,
     });
-
-    const modes = new Map<HyperItemType, PaletteModeState>();
-
-    for (const [type, options] of Object.entries(safeOptions.items)) {
-        if (type === DEFAULT_PALETTE_MODE.COMMAND) {
-            if (options.enabled) {
-                const dCommands = createModeState(DEFAULT_PALETTE_MODE.COMMAND, options as PaletteItems['COMMAND']);
-                // @ts-expect-error - generic type is not inferred
-                modes.set(DEFAULT_PALETTE_MODE.COMMAND, dCommands);
-            }
-            continue;
-        }
-        if (type === DEFAULT_PALETTE_MODE.PAGE) {
-            if (options.enabled) {
-                const dPages = createModeState(DEFAULT_PALETTE_MODE.PAGE, options as PaletteItems['PAGE']);
-                // @ts-expect-error - generic type is not inferred
-                modes.set(DEFAULT_PALETTE_MODE.PAGE, dPages);
-            }
-            continue;
-        }
-        const state = createModeState(type as HyperItemType, options);
-        modes.set(type as HyperItemType, state);
-    }
-
-    const initialMode = modes.get(safeOptions.defaultMode);
-    if (!initialMode) {
-        throw new HyperCommandError(`Invalid default mode: ${safeOptions.defaultMode} is not registered`);
-    }
 
     let _mode_state: PaletteModeState<HyperItemType> = initialMode;
     let _input_el: HTMLInputElement | undefined;
@@ -201,9 +197,16 @@ export function createPalette(options: CreatePaletteOptions = {}) {
         _mode_state.current.set(undefined);
     }
 
+    function _set_empty_results() {
+        _mode_state.results.set([]);
+        selected.value.id = undefined;
+        selected.value.idx = -1;
+        selected.sync();
+    }
+
     function _search_and_update(pattern: string) {
         // TODO: use the sorted raw items instead of sorting the results
-        let results: HyperItem[];
+        let results: AnyHyperItem[];
         if (pattern === '') {
             switch (_mode_state.config.emptyMode) {
                 case RESULTS_EMPTY_MODE.ALL:
@@ -252,8 +255,8 @@ export function createPalette(options: CreatePaletteOptions = {}) {
         _search_and_update(query);
     }
 
-    function _open_palette(mode: HyperItemType) {
-        _mode_state = modes.get(mode) as PaletteModeState<HyperItemType>;
+    function _open_palette(mode: string) {
+        _mode_state = _modes.get(mode) as PaletteModeState<HyperItemType>;
 
         tick().then(() => {
             if (!open.value || !_input_el) {
@@ -269,6 +272,7 @@ export function createPalette(options: CreatePaletteOptions = {}) {
         });
 
         paletteMode.set(mode);
+        open.set(true);
 
         if (!resetOnOpen.value) {
             return;
@@ -290,7 +294,7 @@ export function createPalette(options: CreatePaletteOptions = {}) {
         _reset_current_state();
     }
 
-    async function _resolve_actionable(item: HyperCommand, source: ItemRequestSource) {
+    async function _resolve_actionable(item: HyperActionable, source: ItemRequestSource) {
         _mode_state.current.set(item);
 
         if (item.closeOn === ACTIONABLE_CLOSE_ON.ON_TRIGGER) {
@@ -316,7 +320,7 @@ export function createPalette(options: CreatePaletteOptions = {}) {
                 error: e,
                 item: item,
                 source: source,
-                type: item.type,
+                mode: item.type,
             });
             if (item.onError) {
                 item.onError({ error: e, item: item, source: source });
@@ -344,9 +348,9 @@ export function createPalette(options: CreatePaletteOptions = {}) {
         // TODO: close and reset if necessary
     }
 
-    async function _resolve_navigable(item: HyperPage, source: ItemRequestSource) {
+    async function _resolve_navigable(item: HyperNavigable, source: ItemRequestSource) {
         _mode_state.current.set(item);
-        const config = _mode_state.config as PaletteNavigableConfig;
+        const config = _mode_state.config as HyperNavigableConfiguration;
         if (item.closeOn === NAVIGABLE_CLOSE_ON.ON_TRIGGER) {
             // TODO: close and reset if necessary
         }
@@ -368,7 +372,7 @@ export function createPalette(options: CreatePaletteOptions = {}) {
                 error: e,
                 item: item,
                 source: source,
-                type: item.type,
+                mode: item.type,
             });
             if (config.onError) {
                 config.onError({ error: e, item: item, source: source });
@@ -396,6 +400,12 @@ export function createPalette(options: CreatePaletteOptions = {}) {
         // TODO: close and reset if necessary
     }
 
+    async function _resolve_searchable(item: HyperSearchable, source: ItemRequestSource) {
+        throw new HyperCommandError(
+            `Unimplemented searchable item: ${item} source: ${source}`
+        );
+    }
+
     const _shorcuts_cleanup = new Map<string, CleanupCallback[]>();
     _internal_cleanup.set('shortcuts', () => {
         for (const cleanups of _shorcuts_cleanup.values()) {
@@ -405,7 +415,7 @@ export function createPalette(options: CreatePaletteOptions = {}) {
         }
     });
 
-    function _register_shortcut(item: HyperCommand) {
+    function _register_shortcut(item: HyperActionable) {
         const shortcuts = item.shortcut;
         if (shortcuts.length === 0) {
             return;
@@ -428,7 +438,7 @@ export function createPalette(options: CreatePaletteOptions = {}) {
         _shorcuts_cleanup.set(item.id, cleanup);
     }
 
-    function _unregister_shortcut(item: HyperCommand) {
+    function _unregister_shortcut(item: HyperActionable) {
         const cleanup = _shorcuts_cleanup.get(item.id);
         if (cleanup) {
             for (const c of cleanup) {
@@ -440,14 +450,14 @@ export function createPalette(options: CreatePaletteOptions = {}) {
 
     function _register_palette_shortcuts() {
         const cleanup: CleanupCallback[] = [];
-        for (const mode of modes.values()) {
+        for (const mode of _modes.values()) {
             if (!mode.config.shortcut) {
                 continue;
             }
             for (const s of mode.config.shortcut) {
                 const c = addKeyBinding(window, s, (event) => {
                     event.preventDefault();
-                    _open_palette(mode.type);
+                    _open_palette(mode.mode);
                 });
                 if (c) {
                     cleanup.push(c);
@@ -527,25 +537,25 @@ export function createPalette(options: CreatePaletteOptions = {}) {
         selected.sync();
     }
 
-    function _register_item<T extends HyperItemType = HyperItemType>(type: T, item: OneOrMany<HyperItem>, override: boolean = false, silent: boolean = true) {
-        const mode = modes.get(type) as PaletteModeState<HyperItemType>;
-        const unsafe_items: HyperItem[] = Array.isArray(item) ? item : [item];
-        const new_items: HyperItem[] = [];
-        const removed_items: HyperItem[] = [];
+    function _register_item<T extends string>(mode: T, item: OneOrMany<AnyHyperItem>, override: boolean = false, silent: boolean = true) {
+        const _mode = _modes.get(mode) as PaletteModeState<HyperItemType>;
+        const unsafe_items: AnyHyperItem[] = Array.isArray(item) ? item : [item];
+        const new_items: AnyHyperItem[] = [];
+        const removed_items: AnyHyperItem[] = [];
 
         for (const unsafe_item of unsafe_items) {
             const new_item = unsafe_item;
             let found_idx = -1;
-            for (let i = 0; i < mode.rawAll.length; i++) {
-                if (mode.rawAll[i].id === new_item.id) {
+            for (let i = 0; i < _mode.rawAll.length; i++) {
+                if (_mode.rawAll[i].id === new_item.id) {
                     found_idx = i;
                     break;
                 }
             }
             if (found_idx === -1) {
                 new_items.push(new_item);
-                mode.rawAll.push(new_item);
-                mode.items.value.push(new_item);
+                _mode.rawAll.push(new_item);
+                _mode.items.value.push(new_item);
                 if ('shortcut' in new_item) {
                     _register_shortcut(new_item);
                 }
@@ -554,7 +564,7 @@ export function createPalette(options: CreatePaletteOptions = {}) {
 
             if (override) {
                 // removing old item
-                const removed = mode.rawAll[found_idx];
+                const removed = _mode.rawAll[found_idx];
                 if ('shortcut' in removed) {
                     _unregister_shortcut(removed);
                 }
@@ -562,16 +572,16 @@ export function createPalette(options: CreatePaletteOptions = {}) {
                     removed.onUnregister?.(removed);
                 }
                 // any is used because the type doesn't narrow down to the correct type
-                mode.searcher.remove(removed as any);
+                _mode.searcher.remove(removed as any);
                 removed_items.push(removed);
 
                 // adding new item
-                mode.rawAll[found_idx] = new_item;
+                _mode.rawAll[found_idx] = new_item;
                 if ('shortcut' in new_item) {
                     _register_shortcut(new_item);
                 }
-                mode.items.value[found_idx] = new_item;
-                mode.searcher.add(new_item);
+                _mode.items.value[found_idx] = new_item;
+                _mode.searcher.add(new_item);
                 continue;
             }
 
@@ -579,27 +589,27 @@ export function createPalette(options: CreatePaletteOptions = {}) {
                 continue;
             }
 
-            throw new HyperCommandError(`Item with id ${new_item.id} already exists in the palette, current ${mode.rawAll[found_idx]} new ${new_item}`);
+            throw new HyperCommandError(`Item with id ${new_item.id} already exists in the palette, current ${_mode.rawAll[found_idx]} new ${new_item}`);
         }
 
         // TODO: sort items, better than sorting on search?
 
-        mode.items.sync();
+        _mode.items.sync();
 
-        if (open.value && _mode_state.type === type) {
+        if (open.value && _mode_state.mode === mode) {
             _update_results();
         }
 
         return () => {
-            const mode = modes.get(type);
-            if (!mode) {
+            const _mode = _modes.get(mode);
+            if (!_mode) {
                 return;
             }
 
             for (const new_item of new_items) {
                 let idx = -1;
-                for (let i = 0; i < mode.rawAll.length; i++) {
-                    if (mode.rawAll[i].id === new_item.id) {
+                for (let i = 0; i < _mode.rawAll.length; i++) {
+                    if (_mode.rawAll[i].id === new_item.id) {
                         idx = i;
                         break;
                     }
@@ -608,10 +618,10 @@ export function createPalette(options: CreatePaletteOptions = {}) {
                     continue;
                 }
 
-                mode.rawAll.splice(idx, 1);
-                mode.items.value.splice(idx, 1);
+                _mode.rawAll.splice(idx, 1);
+                _mode.items.value.splice(idx, 1);
                 // EXCUSE: any is used because the type doesn't narrow down to the correct type
-                mode.searcher.remove(new_item as any);
+                _mode.searcher.remove(new_item as any);
                 if ('shortcut' in new_item) {
                     _unregister_shortcut(new_item);
                 }
@@ -622,15 +632,15 @@ export function createPalette(options: CreatePaletteOptions = {}) {
 
             // EXCUSE: no need to sort items because removing items doesn't change the order
 
-            mode.items.sync();
-            if (open.value && _mode_state.type === type) {
+            _mode.items.sync();
+            if (open.value && _mode_state.mode === mode) {
                 _update_results();
             }
         };
     }
 
-    function _unregister_item<T extends HyperItemType = HyperItemType>(type: T, selector: OneOrMany<ItemMatcher<HyperItem>>) {
-        const mode = modes.get(type) as PaletteModeState<HyperItemType>;
+    function _unregister_item<T extends string>(mode: T, selector: OneOrMany<ItemMatcher<AnyHyperItem>>) {
+        const _mode = _modes.get(mode) as PaletteModeState<HyperItemType>;
         const selectors = Array.isArray(selector) ? selector : [selector];
 
         let removed_count = 0;
@@ -638,23 +648,23 @@ export function createPalette(options: CreatePaletteOptions = {}) {
         for (const selector of selectors) {
             to_remove.length = 0;
             if (typeof selector === 'string') {
-                for (let i = 0; i < mode.rawAll.length; i++) {
-                    if (mode.rawAll[i].id === selector) {
+                for (let i = 0; i < _mode.rawAll.length; i++) {
+                    if (_mode.rawAll[i].id === selector) {
                         to_remove.push(i);
                         break;
                     }
                 }
             }
             else if (typeof selector === 'function') {
-                for (let i = 0; i < mode.rawAll.length; i++) {
-                    if (selector(mode.rawAll[i])) {
+                for (let i = 0; i < _mode.rawAll.length; i++) {
+                    if (selector(_mode.rawAll[i])) {
                         to_remove.push(i);
                     }
                 }
             }
             else {
-                for (let i = 0; i < mode.rawAll.length; i++) {
-                    if (selector === mode.rawAll[i]) {
+                for (let i = 0; i < _mode.rawAll.length; i++) {
+                    if (selector === _mode.rawAll[i]) {
                         to_remove.push(i);
                         break;
                     }
@@ -669,10 +679,10 @@ export function createPalette(options: CreatePaletteOptions = {}) {
 
             for (let i = to_remove.length - 1; i >= 0; i--) {
                 const idx = to_remove[i];
-                const removed = mode.rawAll[idx];
-                mode.rawAll.splice(idx, 1);
-                mode.items.value.splice(idx, 1);
-                mode.searcher.remove(removed as any);
+                const removed = _mode.rawAll[idx];
+                _mode.rawAll.splice(idx, 1);
+                _mode.items.value.splice(idx, 1);
+                _mode.searcher.remove(removed as any);
                 if ('shortcut' in removed) {
                     _unregister_shortcut(removed);
                 }
@@ -686,35 +696,358 @@ export function createPalette(options: CreatePaletteOptions = {}) {
             return;
         }
 
-        mode.items.sync();
-        if (open.value && _mode_state.type === type) {
+        _mode.items.sync();
+        if (open.value && _mode_state.mode === mode) {
             _update_results();
         }
     }
 
+    //
+    // Elements
+    //
+
+    const builderPalette = builder(elementName(), {
+        stores: [portal],
+        returned: ([$portal]) => {
+            return {
+                'data-portal': $portal ? '' : undefined,
+                id: ids.palette,
+            };
+        },
+        action: (node) => {
+            const cleanup: CleanupCallback[] = [];
+
+            if (safeOptions.portal) {
+                const _portal = use_portal(node, safeOptions.portal);
+                const _unsubscribe = portal.subscribe((value) => {
+                    _portal.update(value);
+                });
+                cleanup.push(() => {
+                    _portal.destroy();
+                    _unsubscribe();
+                });
+            }
+
+            _register_palette_shortcuts();
+            cleanup.push(_unregister_palette_shortcuts);
+            for (const mode of _modes.values()) {
+                for (const shorcut of mode.config.shortcut ?? []) {
+                    const c = addKeyBinding(window, shorcut, (event) => {
+                        event.preventDefault();
+                        _open_palette(mode.mode);
+                    });
+                    if (c) {
+                        cleanup.push(c);
+                    }
+                }
+            }
+
+            return {
+                destroy() {
+                    for (const c of cleanup) {
+                        c();
+                    }
+                }
+            };
+        }
+    });
+
+    const builderPanel = builder(elementName('panel'), {
+        returned: () => {
+            return {
+                id: ids.panel,
+            };
+        },
+        action: (node) => {
+            const cleanup: CleanupCallback[] = [];
+
+            if (safeOptions.closeOnClickOutside) {
+                cleanup.push(
+                    use_clickoutside(node, {
+                        "type": "pointerdown",
+                        handler: _close_palette
+                    }).destroy
+                );
+            }
+
+            if (safeOptions.closeOnEscape) {
+                _register_escape_shortcut();
+                cleanup.push(_unregister_escape_shortcut);
+            }
+
+            return {
+                destroy() {
+                    for (const c of cleanup) {
+                        c();
+                    }
+                }
+            };
+        }
+    });
+
+    const builderForm = builder(elementName('search-form'), {
+        returned: () => {
+            return {
+                id: ids.form,
+            };
+        },
+        action: (node) => {
+            function on_submit(event: SubmitEvent) {
+                event.preventDefault();
+                // eslint-disable-next-line prefer-const
+                let selectedIdx = selected.value.idx;
+                if (selectedIdx < 0) {
+                    // TODO: get the first element if available
+                    return;
+                }
+
+                const item = _mode_state.results.value[selectedIdx];
+                const mode = _modes.get(item.type);
+                if (!item || !mode) {
+                    // this should never happen
+                    throw new HyperCommandError(
+                        `Invalid selected index: ${selectedIdx} for ${_mode_state}`
+                    );
+                }
+
+                const source: ItemRequestSource = { type: 'submit', event: event };
+
+                if (mode.mode === HYPER_ITEM_TYPE.ACTIONABLE) {
+                    _resolve_actionable(item as HyperActionable, source);
+                }
+                else if (mode.mode === HYPER_ITEM_TYPE.NAVIGABLE) {
+                    _resolve_navigable(item as HyperNavigable, source);
+                }
+                else {
+                    _resolve_searchable(item as HyperSearchable, source);
+                }
+            }
+
+            node.addEventListener('submit', on_submit);
+
+            return {
+                destroy() {
+                    node.removeEventListener('submit', on_submit);
+                }
+            };
+        }
+    });
+
+    const builderLabel = builder(elementName('search-label'), {
+        returned: () => {
+            return {
+                id: ids.label,
+                for: ids.input,
+                style: screenReaderStyle,
+            };
+        },
+    });
+
+    const builderInput = builder(elementName('search-input'), {
+        stores: [placeholder],
+        returned: ([$placeholder]) => {
+            return {
+                id: ids.input,
+                type: 'text',
+                autocomplete: 'off',
+                spellcheck: false,
+                placeholder: $placeholder || undefined,
+                'aria-labelledby': ids.label,
+            };
+        },
+        action: (node) => {
+            _input_el = node as unknown as HTMLInputElement;
+
+            let debounce_id: number | undefined;
+
+            function on_input(event: Event) {
+                const el = event.target as HTMLInputElement;
+                const raw_value = el.value;
+                searchText.set(raw_value);
+                let query = raw_value;
+                let newInputMode = paletteMode.value;
+                let changedMode = false;
+                if (!query.startsWith(_mode_state.config.prefix) || !_mode_state.config.prefix) {
+                    for (const mode of _modes.values()) {
+                        if (query.startsWith(mode.config.prefix)) {
+                            newInputMode = mode.mode;
+                            break;
+                        }
+                    }
+                }
+
+                if (newInputMode !== paletteMode.value) {
+                    changedMode = true;
+                    const mode = _modes.get(newInputMode);
+                    if (!mode) {
+                        _set_empty_results();
+                        return;
+                    }
+                    _mode_state = mode;
+                    paletteMode.set(newInputMode);
+                }
+
+                query = query.slice(_mode_state.config.prefix.length);
+                if (safeOptions.debounce <= 0 || changedMode) {
+                    _search_and_update(query);
+                    return;
+                }
+
+                clearTimeout(debounce_id);
+                debounce_id = setTimeout(
+                    _search_and_update,
+                    safeOptions.debounce,
+                    query
+                );
+            }
+
+            function on_keydown(event: KeyboardEvent) {
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    _select_next_result();
+                }
+                else if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    _select_previous_result();
+                }
+                else if (event.key === 'Escape') {
+                    // noop?
+                }
+                else if (event.key === 'Tab') {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                }
+            }
+
+            node.addEventListener('input', on_input);
+            node.addEventListener('keydown', on_keydown);
+
+            return {
+                destroy() {
+                    _input_el = undefined;
+                    node.removeEventListener('input', on_input);
+                    node.removeEventListener('keydown', on_keydown);
+                }
+            };
+        }
+    });
+
+    const builderItem = builder(elementName('item'), {
+        stores: [],
+        returned: () => {
+            return {
+                role: 'button',
+            };
+        },
+        action: (node: HTMLElement, item: AnyHyperItem) => {
+            function on_click(event: MouseEvent) {
+                event.preventDefault();
+                const el = event.currentTarget as HTMLElement;
+                const source: ItemRequestSource = { type: 'click', event: event };
+                const id = el.getAttribute('data-hyper-id');
+                let idx = -1;
+                for (let i = 0; i < _mode_state.results.value.length; i++) {
+                    if (_mode_state.results.value[i].id === id) {
+                        idx = i;
+                        break;
+                    }
+                }
+                if (idx === -1) {
+                    throw new HyperCommandError(`Invalid item id: ${id}`);
+                }
+
+                const item = _mode_state.results.value[idx];
+                if (!item) {
+                    throw new HyperCommandError(`Invalid item: ${item} mode: ${_mode_state}`);
+                }
+
+                if (_mode_state.mode === HYPER_ITEM_TYPE.ACTIONABLE) {
+                    _resolve_actionable(item as HyperActionable, source);
+                }
+                else if (_mode_state.mode === HYPER_ITEM_TYPE.NAVIGABLE) {
+                    _resolve_navigable(item as HyperNavigable, source);
+                }
+                else {
+                    _resolve_searchable(item as HyperSearchable, source);
+                }
+
+            }
+
+            node.dataset[INTERNAL_KEY.DATASET_HYPER_ID] = item.id.toString();
+
+            node.addEventListener('click', on_click);
+
+            const unsubscribe_selected = selected.subscribe((value) => {
+                if (value.id !== item.id) {
+                    delete node.dataset['selected'];
+                    return;
+                }
+
+                node.dataset['selected'] = '';
+                node.scrollIntoView({ behavior: 'instant', 'block': 'nearest' });
+            });
+
+            return {
+                destroy() {
+                    node.removeEventListener('click', on_click);
+                    unsubscribe_selected();
+                }
+            };
+        }
+    });
+
+    function _exposed_state(): CreatePaletteReturn<Items>['states'] {
+        const items: Record<string, any> = {};
+        for (const [type, mode] of _modes) {
+            items[mode.mode] = {
+                items: mode.items,
+                results: mode.results,
+                current: mode.current,
+                history: mode.history,
+            };
+        }
+        return {
+            open,
+            searchText,
+            mode: paletteMode,
+            error,
+            portal,
+            placeholder,
+            items: items as any
+        };
+    }
+
     return {
+        elements: {
+            palette: builderPalette,
+            panel: builderPanel,
+            form: builderForm,
+            label: builderLabel,
+            input: builderInput,
+            item: builderItem,
+        },
         helpers: {
-            registerItem: <T extends HyperItemType>(type: T, item: OneOrMany<HyperItemTypeMap[T]>, override: boolean = false, silent: boolean = true) => {
-                if (!modes.has(type)) {
+            registerItem: (type, item, override = false, silent = true) => {
+                if (!_modes.has(type)) {
                     throw new HyperCommandError(`Custom mode ${type} was not registered`);
                 }
 
                 return _register_item(type, item, override, silent);
             },
-            unregisterItem: <T extends HyperItemType>(type: T, selector: OneOrMany<ItemMatcher<HyperItemTypeMap[T]>>) => {
-                if (!modes.has(type)) {
-                    throw new HyperCommandError(`Custom mode ${type} was not registered`);
+            unregisterItem: (mode, selector) => {
+                if (!_modes.has(mode)) {
+                    throw new HyperCommandError(`Custom mode ${mode} was not registered`);
                 }
 
-                // @ts-expect-error - type is not inferred correctly
-                return _unregister_item(type, selector);
+                // TODO: improve the typing of the _unregister_item function
+                return _unregister_item(mode, selector as any);
             },
-            search: (pattern: string) => {
+            search: (pattern) => {
                 pattern = pattern.trim();
                 _search_and_update(pattern);
             },
-            openPalette: (mode?: HyperItemType) => {
-                _open_palette(mode ?? _mode_state.type);
+            openPalette: (mode) => {
+                _open_palette(mode ?? _mode_state.mode);
             },
             closePalette: _close_palette,
             togglePalette: () => {
@@ -722,11 +1055,12 @@ export function createPalette(options: CreatePaletteOptions = {}) {
                     _close_palette();
                 }
                 else {
-                    _open_palette(_mode_state.type);
+                    _open_palette(_mode_state.mode);
                 }
             },
             registerPaletteShortcuts: _register_palette_shortcuts,
             unregisterPaletteShortcuts: _unregister_palette_shortcuts,
-        }
+        },
+        states: _exposed_state()
     };
 }

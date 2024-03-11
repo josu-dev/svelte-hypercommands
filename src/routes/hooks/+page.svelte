@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { helpers } from '$lib/default/CommandPalette.svelte';
+  import { helpers } from '$lib/palette/HyperPalette.svelte';
   import { onMount } from 'svelte';
 
   onMount(() => {

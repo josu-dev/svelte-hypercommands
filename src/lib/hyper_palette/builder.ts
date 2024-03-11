@@ -42,8 +42,8 @@ type BuilderCallback<S extends Stores | undefined> = S extends Stores
 
 type BuilderArgs<
     S extends Stores | undefined,
+    A extends Action<any, any>,
     R extends BuilderCallback<S>,
-    A extends Action,
 > = S extends undefined ? {
     stores?: never;
     returned: () => Record<string, any>;
@@ -56,27 +56,27 @@ type BuilderArgs<
 
 type BuilderStore<
     S extends Stores | undefined,
-    A extends Action,
+    A extends Action<any, any>,
     R extends BuilderCallback<S>,
     Name extends string,
 > =
     Readable<
-        ReturnType<R> & { [K in `data-hyper-${Name}`]: '' } & { action: A; }
+        ReturnType<R> & { [K in `data-hyper-${Name}`]: '' }
     >;
 
 export type ExplicitBuilderReturn<
     S extends Stores | undefined,
-    A extends Action,
+    A extends Action<any, any>,
     R extends BuilderCallback<S>,
     Name extends string,
 > = BuilderStore<S, A, R, Name> & A;
 
 export function builder<
     S extends Stores | undefined,
-    A extends Action,
+    A extends Action<any, any>,
     R extends BuilderCallback<S>,
     Name extends string,
->(name: Name, args?: BuilderArgs<S, R, A>): ExplicitBuilderReturn<S, A, R, Name> {
+>(name: Name, args?: BuilderArgs<S, A, R>): ExplicitBuilderReturn<S, A, R, Name> {
     const { stores, action, returned } = args ?? {};
 
     let derivedStore: BuilderStore<S, A, R, Name>;

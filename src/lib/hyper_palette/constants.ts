@@ -1,18 +1,7 @@
-export const DEFAULT_PALETTE_MODE = {
-    COMMAND: 'COMMAND',
-    PAGE: 'PAGE',
-} as const;
-
-export const DEFAULT_PALETTE_MODE_PREFIX = {
-    COMMAND: '>',
-    PAGE: '',
-} as const;
-
-export const HYPER_ITEM_TYPE = DEFAULT_PALETTE_MODE;
-
-export const PALETTE_CLOSE_ACTION = {
-    RESET: 'RESET',
-    KEEP: 'KEEP',
+export const HYPER_ITEM_TYPE = {
+    ACTIONABLE: 'ACTIONABLE',
+    NAVIGABLE: 'NAVIGABLE',
+    SEARCHABLE: 'SEARCHABLE',
 } as const;
 
 export const ACTIONABLE_CLOSE_ON = {
@@ -32,6 +21,13 @@ export const NAVIGABLE_CLOSE_ON = {
     ON_ERROR: 'ON_ERROR',
 } as const;
 
+export const PALETTE_CLOSE_ACTION = {
+    RESET: 'RESET',
+    KEEP: 'KEEP',
+} as const;
+
+export const PALETTE_ELEMENTS = ['palette', 'panel', 'form', 'label', 'input'] as const;
+
 export const RESULTS_EMPTY_MODE = {
     ALL: 'ALL',
     HISTORY: 'HISTORY',
@@ -39,9 +35,7 @@ export const RESULTS_EMPTY_MODE = {
 } as const;
 
 export const SORT_MODE = {
-    ASC: 'ASC',
-    DESC: 'DESC',
-    NONE: 'NONE',
+    SORTED: 'SORTED',
+    REVERSED: 'REVERSED',
+    UNSORTED: 'UNSORTED',
 } as const;
-
-export const PALETTE_ELEMENTS = ['palette', 'panel', 'form', 'label', 'input'] as const;

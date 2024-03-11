@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { helpers, states } from '$lib/default/CommandPalette.svelte';
-  import { defineCommand } from '$lib/index.js';
+  import { defineActionable } from '$lib/index.js';
+  import { helpers, states } from '$lib/palette/HyperPalette.svelte';
   import { onDestroy } from 'svelte';
 
-  const command = defineCommand([
+  const commands = defineActionable([
     {
       id: 'dynamic-command-1',
       name: 'Test Dynamic',
@@ -28,7 +28,7 @@
 
   function registerCommand() {
     unregisterCommands?.();
-    unregisterCommands = helpers.registerCommand(command);
+    unregisterCommands = helpers.registerCommand(commands);
   }
 
   onDestroy(() => {

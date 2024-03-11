@@ -1,38 +1,38 @@
-import { hyperId, noop, type HyperId } from '$lib/internal/index.js';
+import { hyperId, noop } from '$lib/internal/index.js';
 import type { OneOrMany } from '$lib/utils/index.js';
 import { HYPER_ITEM_TYPE } from './constants.js';
-import type { HyperCommand, HyperCommandDefinition, HyperCustomItem, HyperCustomItemDefinition, HyperCustomTypes, HyperPage, HyperPageDefinition } from './types.js';
+import type { HyperActionable, HyperActionableDefinition, HyperNavigable, HyperNavigableDefinition, HyperSearchable, HyperSearchableDefinition } from './types.js';
 
-export function normalizeCommand(command: HyperCommandDefinition): HyperCommand {
+export function normalizeActionable(item: HyperActionableDefinition): HyperActionable {
     return {
-        type: HYPER_ITEM_TYPE.COMMAND,
-        id: (command.id ?? hyperId()) as HyperId,
-        name: command.name,
-        category: command.category ?? '',
-        description: command.description ?? '',
-        shortcut: Array.isArray(command.shortcut) ? command.shortcut : command.shortcut ? [command.shortcut] : [],
-        onRequest: command.onRequest ?? noop,
-        onAction: command.onAction,
-        onError: command.onError,
-        onUnregister: command.onUnregister,
-        closeAction: command.closeAction,
-        closeOn: command.closeOn,
-        meta: command.meta ?? {},
+        type: HYPER_ITEM_TYPE.ACTIONABLE,
+        id: item.id ?? hyperId(),
+        name: item.name,
+        category: item.category ?? '',
+        description: item.description ?? '',
+        shortcut: Array.isArray(item.shortcut) ? item.shortcut : item.shortcut ? [item.shortcut] : [],
+        onRequest: item.onRequest ?? noop,
+        onAction: item.onAction,
+        onError: item.onError,
+        onUnregister: item.onUnregister,
+        closeAction: item.closeAction,
+        closeOn: item.closeOn,
+        meta: item.meta ?? {},
     };
 }
 
-export function defineCommand(commands: OneOrMany<HyperCommandDefinition>): HyperCommand[] {
-    commands = Array.isArray(commands) ? commands : [commands];
+export function defineActionable(item: OneOrMany<HyperActionableDefinition>): HyperActionable[] {
+    item = Array.isArray(item) ? item : [item];
 
-    const normalizedCommands = [];
-    for (const command of commands) {
-        normalizedCommands.push(normalizeCommand(command));
+    const normalized_items = [];
+    for (const i of item) {
+        normalized_items.push(normalizeActionable(i));
     }
 
-    return normalizedCommands;
+    return normalized_items;
 }
 
-export function normalizePage(page: HyperPageDefinition): HyperPage {
+export function normalizeNavigable(page: HyperNavigableDefinition): HyperNavigable {
     const external = !page.url.startsWith('/');
     let cleanUrl = page.url.split('?')[0];
     let urlHostPathname;
@@ -53,8 +53,8 @@ export function normalizePage(page: HyperPageDefinition): HyperPage {
     const name = page.name ?? (cleanUrl.split('/').at(-1) || 'index');
 
     return {
-        type: HYPER_ITEM_TYPE.PAGE,
-        id: page.url as HyperId,
+        type: HYPER_ITEM_TYPE.NAVIGABLE,
+        id: page.url,
         name: name,
         url: page.url,
         urlHostPathname: urlHostPathname,
@@ -63,50 +63,37 @@ export function normalizePage(page: HyperPageDefinition): HyperPage {
     };
 }
 
-export function definePage(pages: OneOrMany<HyperPageDefinition>): HyperPage[] {
-    pages = Array.isArray(pages) ? pages : [pages];
-
-    const normalizedPage = [];
-    for (const page of pages) {
-        normalizedPage.push(normalizePage(page));
-    }
-
-    return normalizedPage;
-}
-
-export function normalizeCustomItem(item: HyperCustomItemDefinition): HyperCustomItem<HyperCustomTypes> {
-    return {
-        type: item.type,
-        id: item.id ?? hyperId(),
-        name: item.name,
-        category: item.category ?? '',
-        shortcut: Array.isArray(item.shortcut) ? item.shortcut : item.shortcut ? [item.shortcut] : [],
-        onRequest: item.onRequest ?? noop,
-        onAction: item.onAction,
-        onError: item.onError,
-        onUnregister: item.onUnregister,
-        closeAction: item.closeAction,
-        closeOn: item.closeOn,
-        meta: item.meta ?? {},
-    };
-}
-
-export function defineCustomItem<T extends HyperCustomTypes>(item: OneOrMany<HyperCustomItemDefinition<T>>): HyperCustomItem<T>[] {
+export function defineNavigable(item: OneOrMany<HyperNavigableDefinition>): HyperNavigable[] {
     item = Array.isArray(item) ? item : [item];
 
-    const normalizedItems = [];
+    const normalized_items = [];
     for (const i of item) {
-        normalizedItems.push(normalizeCustomItem(i));
+        normalized_items.push(normalizeNavigable(i));
     }
 
-    return normalizedItems;
+    return normalized_items;
+}
+
+export function normalizeSearchable(item: HyperSearchableDefinition): HyperSearchable {
+    throw new Error('Not implemented');
+}
+
+export function defineSearchable(item: OneOrMany<HyperSearchableDefinition>): HyperSearchable[] {
+    item = Array.isArray(item) ? item : [item];
+
+    const normalized_items = [];
+    for (const i of item) {
+        normalized_items.push(normalizeSearchable(i));
+    }
+
+    return normalized_items;
 }
 
 const dinamicRouteRegex = /\/\[[^\]]+\]/i;
 
-export function definePagesFromRoutes({ rootName = 'root' } = { rootName: 'root' }): HyperPage[] {
+export function definePagesFromRoutes({ rootName = 'root' } = { rootName: 'root' }): HyperNavigable[] {
     const modules = import.meta.glob('/src/routes/**/+page.svelte');
-    const pages: HyperPage[] = [];
+    const pages: HyperNavigable[] = [];
     for (const path in modules) {
         if (dinamicRouteRegex.test(path)) {
             continue;
@@ -115,7 +102,7 @@ export function definePagesFromRoutes({ rootName = 'root' } = { rootName: 'root'
         const rawURL = path.slice(11, path.length > 24 ? -13 : -12);
         const url = rawURL.replaceAll(/\([^)]+\)\//ig, '');
         const name = url.split('/').pop() || rootName;
-        pages.push(normalizePage({ name: name, url: url }));
+        pages.push(normalizeNavigable({ name: name, url: url }));
     }
     return pages;
 }
