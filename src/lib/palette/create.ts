@@ -10,7 +10,7 @@ import type { AnyHyperItem, AnyHyperModeOptions, CreatePaletteOptions, CreatePal
 const INTERNAL_KEY = {
     OPEN_PALETTE: '__hyper_open_palette',
     CLOSE_PALETTE: '__hyper_close_palette',
-    DATASET_HYPER_ID: 'dataHyperId',
+    DATASET_HYPER_ID: 'hyperId',
 } as const;
 
 const SR_STYLE = `
@@ -1100,22 +1100,24 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 event.preventDefault();
                 const el = event.currentTarget as HTMLElement;
                 const source: ItemRequestSource = { type: 'click', event: event };
-                const id = el.getAttribute('data-hyper-id');
+                const el_id = el.dataset[INTERNAL_KEY.DATASET_HYPER_ID];
                 let idx = -1;
+                let item: AnyHyperItem | undefined;
                 for (let i = 0; i < _mode_state.results.value.length; i++) {
-                    if (_mode_state.results.value[i].id === id) {
+                    if (_mode_state.results.value[i].id === el_id) {
                         idx = i;
+                        item = _mode_state.results.value[i];
                         break;
                     }
                 }
-                if (idx === -1) {
-                    throw new HyperPaletteError(`Invalid item id: ${id}`);
+                if (!item) {
+                    throw new HyperPaletteError(`Invalid item id: ${el_id} mode: ${_mode_state}`);
                 }
 
-                const item = _mode_state.results.value[idx];
-                if (!item) {
-                    throw new HyperPaletteError(`Invalid item: ${item} mode: ${_mode_state}`);
-                }
+                selected.value.el = el;
+                selected.value.id = item.id;
+                selected.value.idx = idx;
+                selected.sync();
 
                 if (item.type === HYPER_ITEM.ACTIONABLE) {
                     _resolve_actionable(item as HyperActionable, source);
@@ -1136,6 +1138,9 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             const unsubscribe_selected = selected.subscribe((value) => {
                 if (value.id !== item.id) {
                     delete node.dataset['selected'];
+                    return;
+                }
+                if (node.dataset['selected'] === '') {
                     return;
                 }
 

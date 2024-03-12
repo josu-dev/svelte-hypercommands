@@ -88,7 +88,7 @@ export interface HyperItemBaseDef {
 
 export interface HyperItemBase<T extends HyperItemType = HyperItemType> {
     /**
-     * @internal do not use.
+     * @internal do not override.
      * 
      * Discriminator for the type of HyperItem.
      */
