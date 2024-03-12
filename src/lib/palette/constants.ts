@@ -30,8 +30,10 @@ export const SEARCHABLE_CLOSE_ON = {
 } as const;
 
 export const PALETTE_CLOSE_ACTION = {
-    RESET: 'RESET',
     KEEP: 'KEEP',
+    KEEP_CLOSE: 'KEEP_CLOSE',
+    RESET: 'RESET',
+    RESET_CLOSE: 'RESET_CLOSE',
 } as const;
 
 export const PALETTE_ELEMENTS = ['palette', 'panel', 'form', 'label', 'input'] as const;

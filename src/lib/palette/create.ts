@@ -25,36 +25,6 @@ const SR_STYLE = `
   white-space: nowrap;
 `;
 
-
-function elementName(name?: string): string {
-    return name ? `palette-${name}` : 'palette';
-}
-
-const itemModeDefaults = {
-    [HYPER_ITEM.ACTIONABLE]: {
-        emptyMode: NO_RESULTS_MODE.ALL,
-        shortcut: [],
-        sortMode: SORT_MODE.SORTED,
-        closeOn: ACTIONABLE_CLOSE_ON.ALWAYS,
-    },
-    [HYPER_ITEM.NAVIGABLE]: {
-        emptyMode: NO_RESULTS_MODE.ALL,
-        shortcut: [],
-        sortMode: SORT_MODE.SORTED,
-        onExternal: (url: string) => {
-            window.open(url, '_blank');
-        },
-        onLocal: (url: string) => {
-            window.location.href = url;
-        }
-    },
-    [HYPER_ITEM.SEARCHABLE]: {
-        emptyMode: NO_RESULTS_MODE.ALL,
-        shortcut: [],
-        sortMode: SORT_MODE.SORTED,
-    },
-};
-
 const defaults = {
     closeAction: PALETTE_CLOSE_ACTION.RESET,
     closeOnClickOutside: true,
@@ -62,53 +32,21 @@ const defaults = {
     debounce: 150,
     defaults: {
         open: false,
-        searchText: '',
+        search: '',
         placeholder: undefined,
     },
     portal: false,
     resetOnOpen: false,
 } satisfies (
         Omit<HyperPaletteOptions, 'defaults' | 'items' | 'open' | 'placeholder'>
-        & { defaults: Pick<HyperPaletteOptions['defaults'], 'open' | 'placeholder' | 'searchText'>; }
+        & { defaults: Pick<HyperPaletteOptions['defaults'], 'open' | 'placeholder' | 'search'>; }
     );
 
-function parseItemsConfig<T extends PaletteItemsOptions>(items: T) {
-    if (typeof items !== 'object' || items === null) {
-        throw new HyperPaletteError(
-            `Invalid items configuration, expected Record<string, PaletteItemConfig> got ${typeof items}`
-        );
-    }
-
-    const safeItems = {} as any;
-    const registeredPrefixes = new Set<string>();
-    const validTypes = new Set<HyperItemType>(Object.values(HYPER_ITEM));
-
-    for (const [mode, config] of Object.entries(items)) {
-        if (typeof config !== 'object' || config === null) {
-            throw new HyperPaletteError(
-                `Invalid item configuration, expected PaletteItemConfig got ${typeof config}`
-            );
-        }
-        if (mode in safeItems) {
-            throw new HyperPaletteError(`Duplicate item mode: ${mode}`);
-        }
-        if (registeredPrefixes.has(config.prefix)) {
-            throw new HyperPaletteError(`Duplicate item prefix: ${config.prefix}`);
-        }
-        if (!validTypes.has(config.type as any)) {
-            throw new HyperPaletteError(`Invalid item type: ${config.type}`);
-        }
-
-        safeItems[mode] = {
-            ...itemModeDefaults[config.type],
-            ...config,
-        };
-    }
-
-    return safeItems;
+function elementName(name?: string): string {
+    return name ? `palette-${name}` : 'palette';
 }
 
-function generateIds(initials: Partial<PaletteIds>): PaletteIds {
+function getIds(initials: Partial<PaletteIds>): PaletteIds {
     const ids = {} as PaletteIds;
     for (const name of PALETTE_ELEMENTS) {
         ids[name] = initials[name] || hyperId();
@@ -116,76 +54,154 @@ function generateIds(initials: Partial<PaletteIds>): PaletteIds {
     return ids;
 }
 
-function createModeState<T extends HyperItemConfig>(mode: string, options: T): PaletteModeState<T['type']> {
-    return {
-        mode: mode,
-        config: options,
-        items: writableExposed([]),
-        results: writableExposed([]),
-        history: writableExposed([]),
-        searcher: new Searcher({ mapper: options.mapToSearch as any }),
-        current: writableExposed(undefined),
-        rawAll: [],
-        rawAllSorted: [],
-        lastInput: '',
-    } as any;
+function getInitialMode(modes: Map<string, PaletteModeState>, search: string, initial?: string): PaletteModeState {
+    let mode: PaletteModeState | undefined;
+    if (search) {
+        for (const config of modes.values()) {
+            if (search.startsWith(config.config.prefix)) {
+                mode = config;
+                break;
+            }
+        }
+    }
+    else if (initial) {
+        mode = modes.get(initial);
+    }
+    if (!mode) {
+        mode = modes.values().next().value;
+    }
+    if (!mode) {
+        throw new HyperPaletteError(
+            `Initial mode couldn't be resolved from default search '${search}' and default mode '${initial}'`
+        );
+    }
+
+    return mode;
+}
+
+function getModes<T extends PaletteItemsOptions>(items: T): Map<string, PaletteModeState> {
+    if (typeof items !== 'object' || items === null) {
+        throw new HyperPaletteError(
+            `Invalid modes configuration, expected Record<string, PaletteModeOptions> got '${items}'`
+        );
+    }
+
+    const modes = new Map<string, PaletteModeState>();
+    const prefixes = new Set<string>();
+    for (const [mode, options] of Object.entries(items)) {
+        if (typeof options !== 'object' || options === null) {
+            throw new HyperPaletteError(
+                `Invalid mode configuration, expected PaletteModeOptions got '${options}' at mode '${mode}'`
+            );
+        }
+        if (modes.has(mode)) {
+            throw new HyperPaletteError(`Duplicate mode: '${mode}'`);
+        }
+        if (prefixes.has(options.prefix)) {
+            throw new HyperPaletteError(`Duplicate prefix: '${options.prefix}'`);
+        }
+
+        let mode_config: HyperItemConfig;
+        if (options.type === HYPER_ITEM.ACTIONABLE) {
+            mode_config = {
+                type: HYPER_ITEM.ACTIONABLE,
+                prefix: options.prefix,
+                mapToSearch: options.mapToSearch,
+                closeOn: options.closeOn ?? ACTIONABLE_CLOSE_ON.ALWAYS,
+                emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
+                shortcut: options.shortcut ?? [],
+                sortMode: options.sortMode ?? SORT_MODE.SORTED,
+            };
+        }
+        else if (options.type === HYPER_ITEM.NAVIGABLE) {
+            mode_config = {
+                type: HYPER_ITEM.NAVIGABLE,
+                prefix: options.prefix,
+                mapToSearch: options.mapToSearch,
+                closeOn: options.closeOn ?? NAVIGABLE_CLOSE_ON.ALWAYS,
+                emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
+                onExternal: options.onExternal ?? ((url: string) => { window.open(url, '_blank'); }),
+                onLocal: options.onLocal ?? ((url: string) => { window.location.href = url; }),
+                onNavigation: options.onNavigation,
+                onError: options.onError,
+                shortcut: options.shortcut ?? [],
+                sortMode: options.sortMode ?? SORT_MODE.SORTED,
+            };
+        }
+        else if (options.type === HYPER_ITEM.SEARCHABLE) {
+            mode_config = {
+                type: HYPER_ITEM.SEARCHABLE,
+                mapToSearch: options.mapToSearch,
+                prefix: options.prefix,
+                emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
+                shortcut: options.shortcut ?? [],
+                sortMode: options.sortMode ?? SORT_MODE.SORTED,
+            };
+        }
+        else {
+            // @ts-expect-error - Run time validation
+            throw new HyperPaletteError(`Invalid item type: '${options.type}'`);
+        }
+
+        const state = {
+            mode: mode,
+            config: mode_config,
+            items: writableExposed([]),
+            results: writableExposed([]),
+            history: writableExposed([]),
+            searcher: new Searcher({ mapper: options.mapToSearch as any }),
+            current: writableExposed(undefined),
+            rawAll: [],
+            rawAllSorted: [],
+            lastInput: '',
+        } as PaletteModeState;
+
+        modes.set(mode, state);
+        prefixes.add(options.prefix);
+    }
+
+    return modes;
 }
 
 export function createPalette<T extends CreatePaletteOptions, Items extends T['items']>(options: T): CreatePaletteReturn<Items> {
     const safeOptions = { ...defaults, ...options } as HyperPaletteOptions;
-    safeOptions.items = parseItemsConfig(safeOptions.items);
     safeOptions.defaults = { ...defaults.defaults, ...safeOptions.defaults };
-
-    const _modes = new Map<string, PaletteModeState>();
-
-    for (const [mode, options] of Object.entries(safeOptions.items)) {
-        const state = createModeState(mode, options);
-        _modes.set(mode, state);
-    }
-
-    // TODO: make search text define the initial moder
-    let initialMode: PaletteModeState;
-    if (safeOptions.defaults.mode) {
-        // @ts-expect-error - is valid since the throw will stop the execution
-        initialMode = _modes.get(safeOptions.defaults.mode);
-        if (!initialMode) {
-            throw new HyperPaletteError(`Invalid default mode: ${safeOptions.defaults.mode} is not registered`);
-        }
-    }
-    else {
-        initialMode = _modes.values().next().value;
-    }
 
     const _internal_cleanup = new Map<string, Cleanup>();
 
-    let open: WritableExposed<boolean>;
+    const _modes = getModes(safeOptions.items);
+
+    let _input_el: HTMLInputElement | undefined;
+    let _mode_state: PaletteModeState<HyperItemType> = getInitialMode(
+        _modes,
+        safeOptions.defaults.search,
+        safeOptions.defaults.mode
+    );
+    let _open: WritableExposed<boolean>;
     if (options.open) {
-        const _open = exposeWritable(options.open);
+        const open = exposeWritable(options.open);
         if (!browser) {
-            _open.unsubscribe();
+            open.unsubscribe();
         }
         else {
-            _internal_cleanup.set('open', _open.unsubscribe);
+            _internal_cleanup.set('open', open.unsubscribe);
         }
-        open = _open;
+        _open = open;
     }
     else {
-        open = writableExposed(safeOptions.defaults.open);
+        _open = writableExposed(safeOptions.defaults.open);
     }
 
-    // ids are optional must be nullish coalesced to avoid undefined
-    const ids = generateIds(safeOptions.defaults.ids ?? {});
-    // TODO: make search text define the initial mode
-    const searchText = writableExposed('');
-    // TODO: check if default mode exists, defualt to first if not passed in
-    const paletteMode = writableExposed(initialMode.mode);
-    const error = writableExposed<PaletteError<any> | undefined>(undefined);
-    const portal = writableExposed(safeOptions.portal);
-    const placeholder = writableExposed(safeOptions.defaults.placeholder);
-    const debounce = writableExposed(safeOptions.debounce);
+    const ids = getIds(safeOptions.defaults.ids ?? {});
+    const searchText = writableExposed(safeOptions.defaults.search);
+    const paletteMode = writableExposed(_mode_state.mode);
     const closeAction = writableExposed(safeOptions.closeAction);
     const closeOnClickOutside = writableExposed(safeOptions.closeOnClickOutside);
     const closeOnEscape = writableExposed(safeOptions.closeOnEscape);
+    const debounce = writableExposed(safeOptions.debounce);
+    const error = writableExposed<PaletteError<string> | undefined>(undefined);
+    const placeholder = writableExposed(safeOptions.defaults.placeholder);
+    const portal = writableExposed(safeOptions.portal);
     const resetOnOpen = writableExposed(safeOptions.resetOnOpen);
     const selected = writableExposed<PaletteSelected>({
         el: undefined,
@@ -193,27 +209,16 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
         id: undefined,
     });
 
-    let _mode_state: PaletteModeState<HyperItemType> = initialMode;
-    let _input_el: HTMLInputElement | undefined;
-
-    function _reset_current_state() {
-        searchText.set('');
-        selected.value.el = undefined;
-        selected.value.id = undefined;
-        selected.value.idx = -1;
-        selected.sync();
-        _mode_state.current.set(undefined);
-    }
-
     function _set_empty_results() {
         _mode_state.results.set([]);
+        selected.value.el = undefined;
         selected.value.id = undefined;
         selected.value.idx = -1;
         selected.sync();
     }
 
     function _search_and_update(pattern: string) {
-        // TODO: use the sorted raw items instead of sorting the results
+        // TODO: use the sorted raw items
         let results: AnyHyperItem[];
         if (pattern === '') {
             switch (_mode_state.config.emptyMode) {
@@ -240,6 +245,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
         }
         else {
             results = _mode_state.searcher.search(pattern);
+            console.log(_mode_state.searcher);
         }
 
         _mode_state.results.set(results);
@@ -258,7 +264,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
 
     function _update_results() {
         let query = searchText.value;
-        // POSSIBLE BUG: assuming that the prefix is always at the start of the query
+        // POSSIBLE BUG: assumes prefix is always at the start of the query
         query = query.slice(_mode_state.config.prefix.length);
         _search_and_update(query);
     }
@@ -267,7 +273,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
         _mode_state = _modes.get(mode) as PaletteModeState<HyperItemType>;
 
         tick().then(() => {
-            if (!open.value || !_input_el) {
+            if (!_open.value || !_input_el) {
                 return;
             }
             if (resetOnOpen.value) {
@@ -280,41 +286,67 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
         });
 
         paletteMode.set(mode);
-        open.set(true);
+        _open.set(true);
 
         if (!resetOnOpen.value) {
             return;
         }
-        _reset_current_state();
+
+        _mode_state.current.set(undefined);
+        searchText.set(_mode_state.config.prefix);
         _update_results();
     }
 
     function _close_palette() {
-        if (!open.value) {
-            return;
-        }
-        open.set(false);
-        if (closeAction.value === PALETTE_CLOSE_ACTION.KEEP) {
-            // POSSIBLE BUG: maybe is a good idea to save the last input
+        if (!_open.value) {
             return;
         }
 
-        _reset_current_state();
+        _open.set(false);
+        _resolve_close_action();
+    }
+
+    /**
+     * Resolves the close action based on the current mode configuration
+     * 
+     * It doesn't reset the current item since it's handled by the specific item
+     * resolve function
+     */
+    function _resolve_close_action() {
+        const should_reset = closeAction.value === PALETTE_CLOSE_ACTION.RESET || closeAction.value === PALETTE_CLOSE_ACTION.RESET_CLOSE;
+        const should_close = closeAction.value === PALETTE_CLOSE_ACTION.KEEP_CLOSE || closeAction.value === PALETTE_CLOSE_ACTION.RESET_CLOSE;
+
+        _mode_state.lastInput = searchText.value;
+
+        if (should_reset) {
+            const input_text = _mode_state.config.prefix;
+            if (_input_el) {
+                _input_el.value = input_text;
+            }
+            searchText.set(input_text);
+            _search_and_update('');
+        }
+
+        if (should_close && !_open.value) {
+            _open.set(true);
+        }
     }
 
     async function _resolve_actionable(item: HyperActionable, source: ItemRequestSource) {
         _mode_state.current.set(item);
 
         if (item.closeOn === ACTIONABLE_CLOSE_ON.ON_TRIGGER) {
-            // TODO: close and reset if necessary
+            _resolve_close_action();
         }
+
         const preAction = await item.onRequest({ item, source });
         if (preAction === false) {
             if (
                 item.closeOn === ACTIONABLE_CLOSE_ON.ON_CANCEL
                 || item.closeOn === ACTIONABLE_CLOSE_ON.ALWAYS
             ) {
-                // TODO: close and reset if necessary
+                _resolve_close_action();
+                _mode_state.current.set(undefined);
             }
             return;
         }
@@ -337,7 +369,8 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                 item.closeOn === ACTIONABLE_CLOSE_ON.ON_ERROR
                 || item.closeOn === ACTIONABLE_CLOSE_ON.ALWAYS
             ) {
-                // TODO: close and reset if necessary
+                _resolve_close_action();
+                _mode_state.current.set(undefined);
                 return;
             }
         }
@@ -347,20 +380,21 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
         }
 
         if (
-            !(item.closeOn === ACTIONABLE_CLOSE_ON.ON_SUCCESS)
-            && !(item.closeOn === ACTIONABLE_CLOSE_ON.ALWAYS)
+            item.closeOn === ACTIONABLE_CLOSE_ON.ON_SUCCESS
+            || item.closeOn === ACTIONABLE_CLOSE_ON.ALWAYS
         ) {
-            return;
+            _resolve_close_action();
         }
 
-        // TODO: close and reset if necessary
+        _mode_state.current.set(undefined);
     }
 
     async function _resolve_navigable(item: HyperNavigable, source: ItemRequestSource) {
         _mode_state.current.set(item);
+
         const config = _mode_state.config as HyperNavigableConfiguration;
         if (item.closeOn === NAVIGABLE_CLOSE_ON.ON_TRIGGER) {
-            // TODO: close and reset if necessary
+            _resolve_close_action();
         }
 
         try {
@@ -389,7 +423,9 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                 item.closeOn === NAVIGABLE_CLOSE_ON.ON_ERROR
                 || item.closeOn === NAVIGABLE_CLOSE_ON.ALWAYS
             ) {
-                // TODO: close and reset if necessary
+                _resolve_close_action();
+
+                _mode_state.current.set(undefined);
                 return;
             }
         }
@@ -399,13 +435,12 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
         }
 
         if (
-            !(item.closeOn === NAVIGABLE_CLOSE_ON.ON_SUCCESS)
-            && !(item.closeOn === NAVIGABLE_CLOSE_ON.ALWAYS)
+            item.closeOn === NAVIGABLE_CLOSE_ON.ON_SUCCESS
+            || item.closeOn === NAVIGABLE_CLOSE_ON.ALWAYS
         ) {
-            return;
+            _resolve_close_action();
+            _mode_state.current.set(undefined);
         }
-
-        // TODO: close and reset if necessary
     }
 
     async function _resolve_searchable(item: HyperSearchable, source: ItemRequestSource) {
@@ -564,6 +599,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                 new_items.push(new_item);
                 _mode.rawAll.push(new_item);
                 _mode.items.value.push(new_item);
+                _mode.searcher.add(new_item);
                 if ('shortcut' in new_item) {
                     _register_shortcut(new_item);
                 }
@@ -571,7 +607,6 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
             }
 
             if (override) {
-                // removing old item
                 const removed = _mode.rawAll[found_idx];
                 if ('shortcut' in removed) {
                     _unregister_shortcut(removed);
@@ -579,11 +614,10 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                 if ('onUnregister' in removed) {
                     removed.onUnregister?.(removed);
                 }
-                // any is used because the type doesn't narrow down to the correct type
-                _mode.searcher.remove(removed as any);
+                // @ts-expect-error - Its safe to remove the item
+                _mode.searcher.remove(removed);
                 removed_items.push(removed);
 
-                // adding new item
                 _mode.rawAll[found_idx] = new_item;
                 if ('shortcut' in new_item) {
                     _register_shortcut(new_item);
@@ -600,11 +634,11 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
             throw new HyperPaletteError(`Item with id ${new_item.id} already exists in the palette, current ${_mode.rawAll[found_idx]} new ${new_item}`);
         }
 
-        // TODO: sort items, better than sorting on search?
+        // TODO: sort items
 
         _mode.items.sync();
 
-        if (open.value && _mode_state.mode === mode) {
+        if (_open.value && _mode_state.mode === mode) {
             _update_results();
         }
 
@@ -628,8 +662,8 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
 
                 _mode.rawAll.splice(idx, 1);
                 _mode.items.value.splice(idx, 1);
-                // EXCUSE: any is used because the type doesn't narrow down to the correct type
-                _mode.searcher.remove(new_item as any);
+                // @ts-expect-error - Its safe to remove the item
+                _mode.searcher.remove(new_item);
                 if ('shortcut' in new_item) {
                     _unregister_shortcut(new_item);
                 }
@@ -638,10 +672,10 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                 }
             }
 
-            // EXCUSE: no need to sort items because removing items doesn't change the order
+            // REMEMBER: no need to sort items because removing items doesn't change the order
 
             _mode.items.sync();
-            if (open.value && _mode_state.mode === mode) {
+            if (_open.value && _mode_state.mode === mode) {
                 _update_results();
             }
         };
@@ -690,7 +724,8 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                 const removed = _mode.rawAll[idx];
                 _mode.rawAll.splice(idx, 1);
                 _mode.items.value.splice(idx, 1);
-                _mode.searcher.remove(removed as any);
+                // @ts-expect-error - Its safe to remove the item
+                _mode.searcher.remove(removed);
                 if ('shortcut' in removed) {
                     _unregister_shortcut(removed);
                 }
@@ -705,7 +740,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
         }
 
         _mode.items.sync();
-        if (open.value && _mode_state.mode === mode) {
+        if (_open.value && _mode_state.mode === mode) {
             _update_results();
         }
     }
@@ -738,6 +773,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
 
             _register_palette_shortcuts();
             cleanup.push(_unregister_palette_shortcuts);
+
             for (const mode of _modes.values()) {
                 for (const shorcut of mode.config.shortcut ?? []) {
                     const c = addKeyBinding(window, shorcut, (event) => {
@@ -753,6 +789,9 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
             return {
                 destroy() {
                     for (const c of cleanup) {
+                        c();
+                    }
+                    for (const c of _internal_cleanup.values()) {
                         c();
                     }
                 }
@@ -802,17 +841,25 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
         action: (node) => {
             function on_submit(event: SubmitEvent) {
                 event.preventDefault();
-                // eslint-disable-next-line prefer-const
-                let selectedIdx = selected.value.idx;
-                if (selectedIdx < 0) {
-                    // TODO: get the first element if available
+                if (_mode_state.results.value.length === 0) {
                     return;
                 }
 
-                const item = _mode_state.results.value[selectedIdx];
-                const mode = _modes.get(item.type);
-                if (!item || !mode) {
-                    // this should never happen
+                let selectedIdx = selected.value.idx;
+                let item: AnyHyperItem;
+                if (selectedIdx < 0) {
+                    selectedIdx = 0;
+                    item = _mode_state.results.value[selectedIdx];
+                    selected.value.id = item.id;
+                    selected.value.idx = selectedIdx;
+                    selected.sync();
+                }
+                else {
+                    item = _mode_state.results.value[selectedIdx];
+                }
+
+                if (!item) {
+                    // NEVER: selected index should always be valid
                     throw new HyperPaletteError(
                         `Invalid selected index: ${selectedIdx} for ${_mode_state}`
                     );
@@ -820,10 +867,10 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
 
                 const source: ItemRequestSource = { type: 'submit', event: event };
 
-                if (mode.mode === HYPER_ITEM.ACTIONABLE) {
+                if (item.type === HYPER_ITEM.ACTIONABLE) {
                     _resolve_actionable(item as HyperActionable, source);
                 }
-                else if (mode.mode === HYPER_ITEM.NAVIGABLE) {
+                else if (item.type === HYPER_ITEM.NAVIGABLE) {
                     _resolve_navigable(item as HyperNavigable, source);
                 }
                 else {
@@ -874,7 +921,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                 searchText.set(raw_value);
                 let query = raw_value;
                 let newInputMode = paletteMode.value;
-                let changedMode = false;
+                let force_search = debounce.value <= 0;
                 if (!query.startsWith(_mode_state.config.prefix) || !_mode_state.config.prefix) {
                     for (const mode of _modes.values()) {
                         if (query.startsWith(mode.config.prefix)) {
@@ -885,7 +932,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                 }
 
                 if (newInputMode !== paletteMode.value) {
-                    changedMode = true;
+                    force_search = true;
                     const mode = _modes.get(newInputMode);
                     if (!mode) {
                         _set_empty_results();
@@ -895,16 +942,18 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                     paletteMode.set(newInputMode);
                 }
 
+                clearTimeout(debounce_id);
                 query = query.slice(_mode_state.config.prefix.length);
-                if (safeOptions.debounce <= 0 || changedMode) {
+
+                if (force_search) {
+                    console.log(`searching: ${query}`);
                     _search_and_update(query);
                     return;
                 }
 
-                clearTimeout(debounce_id);
                 debounce_id = setTimeout(
                     _search_and_update,
-                    safeOptions.debounce,
+                    debounce.value,
                     query
                 );
             }
@@ -969,10 +1018,10 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                     throw new HyperPaletteError(`Invalid item: ${item} mode: ${_mode_state}`);
                 }
 
-                if (_mode_state.mode === HYPER_ITEM.ACTIONABLE) {
+                if (item.type === HYPER_ITEM.ACTIONABLE) {
                     _resolve_actionable(item as HyperActionable, source);
                 }
-                else if (_mode_state.mode === HYPER_ITEM.NAVIGABLE) {
+                else if (item.type === HYPER_ITEM.NAVIGABLE) {
                     _resolve_navigable(item as HyperNavigable, source);
                 }
                 else {
@@ -1015,7 +1064,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
             };
         }
         return {
-            open,
+            open: _open,
             searchText,
             mode: paletteMode,
             error,
@@ -1047,8 +1096,8 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                     throw new HyperPaletteError(`Custom mode ${mode} was not registered`);
                 }
 
-                // TODO: improve the typing of the _unregister_item function
-                return _unregister_item(mode, selector as any);
+                // @ts-expect-error - Its a valid selector
+                return _unregister_item(mode, selector);
             },
             search: (pattern) => {
                 pattern = pattern.trim();
@@ -1059,7 +1108,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
             },
             closePalette: _close_palette,
             togglePalette: () => {
-                if (open.value) {
+                if (_open.value) {
                     _close_palette();
                 }
                 else {

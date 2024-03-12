@@ -255,7 +255,7 @@ export type HyperItemBaseConfig<T extends HyperItemType> = {
     /**
      * How to sort the items results.
      * 
-     * @default "ASC"
+     * @default "SORTED"
      */
     sortMode?: SortMode;
 };
@@ -322,7 +322,7 @@ export interface HyperNavigableConfiguration extends HyperItemBaseConfig<HyperNa
      * 
      * If provided, the `onExternal` and `onLocal` hooks will not be called.
      */
-    onNavigation: (item: HyperNavigable) => MaybePromise<void>;
+    onNavigation?: (item: HyperNavigable) => MaybePromise<void>;
     /**
      * Hook to handle errors during the navigation.
      * 
@@ -371,19 +371,17 @@ export type PaletteIds = {
     [K in keyof PaletteElements]: string;
 };
 
-export type PaletteDefaultsOptions<T extends string> = {
+export type PaletteDefaultsOptions<T extends string = string> = {
     /**
-     * Initial text for the search input for initializating the palette.
+     * Ids for the different elements of the palette.
      * 
-     * If provided, the palette mode will be inferred from the input taking precedence over the `mode` option.
-     * 
-     * @default ""
+     * If not provided, random unique ids will be generated.
      */
-    searchText: string;
+    ids?: PaletteIds;
     /**
      * Default mode of the palette.
      */
-    mode: T;
+    mode?: T;
     /**
      * Whether the palette should be open by default.
      * 
@@ -395,11 +393,13 @@ export type PaletteDefaultsOptions<T extends string> = {
      */
     placeholder?: string;
     /**
-     * Ids for the different elements of the palette.
+     * Initial text for the search input.
      * 
-     * If not provided, random unique ids will be generated.
+     * If provided, the palette mode will be inferred from it taking precedence over the `mode` option.
+     * 
+     * @default ""
      */
-    ids: PaletteIds;
+    search: string;
 };
 
 export type PaletteItemsOptions = Record<string, HyperItemConfig>;
@@ -408,8 +408,10 @@ export type HyperPaletteOptions = {
     /**
      * Defines the action to take when the palette is closed.
      * 
-     * - `RESET`: Resets the state to its initial value.
      * - `KEEP`: Keeps the state as is.
+     * - `KEEP_CLOSE`: Keeps the state as is and closes the palette.
+     * - `RESET`: Resets the state to its initial value.
+     * - `RESET_CLOSE`: Resets the state to its initial value and closes the palette.
      * 
      * @default "RESET"
      */
