@@ -36,7 +36,7 @@ export const PALETTE_CLOSE_ACTION = {
     RESET_CLOSE: 'RESET_CLOSE',
 } as const;
 
-export const PALETTE_ELEMENTS = ['palette', 'panel', 'form', 'label', 'input'] as const;
+export const PALETTE_ELEMENTS_IDS = ['palette', 'panel', 'form', 'label', 'input'] as const;
 
 export const NO_RESULTS_MODE = {
     ALL: 'ALL',

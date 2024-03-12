@@ -1,5 +1,5 @@
 import type { Register } from '$lib/index.js';
-import type { AnyRecord, Cleanup, DeepPartial, HyperId, MaybePromise, OneOrMany, Searcher, Values, WritableExposed } from '$lib/internal/helpers/index.js';
+import type { Cleanup, DeepPartial, HyperId, MaybePromise, OneOrMany, Searcher, Tuple, Values, WritableExposed } from '$lib/internal/helpers/index.js';
 import type { Writable } from 'svelte/store';
 import type * as C from './constants.js';
 
@@ -31,8 +31,6 @@ export type SortMode = Values<typeof C.SORT_MODE>;
 // User defined preferences
 //
 
-export type HyperItemMeta = Record<string, any>;
-
 export type GlobalUserActionable = Register extends { HyperActionable: infer _Config; }
     ? _Config extends {
         meta?: HyperItemMeta;
@@ -54,16 +52,26 @@ export type GlobalUserItemsTrait = {
     }
 };
 
+type InferUserMeta<T> = T extends never ? HyperItemMeta
+    : T extends { meta: infer _Meta; }
+    ? _Meta extends HyperItemMeta ? _Meta : never
+    : HyperItemMeta;
+
+export type GlobalActionableMeta = InferUserMeta<GlobalUserActionable>;
+
+export type GlobalNavigableMeta = InferUserMeta<GlobalUserNavigable>;
 
 //
 // Item traits
 //
 
+export type HyperItemMeta = Record<string, any>;
+
 export type HyperItemId = HyperId | string;
 
-export interface HyperItemIdentifier<T extends HyperItemType = HyperItemType> {
+export interface HyperItemBase<T extends HyperItemType = HyperItemType> {
     /**
-     * @internal
+     * @internal do not use.
      * 
      * Discriminator for the type of HyperItem.
      */
@@ -78,16 +86,13 @@ export interface HyperItemIdentifier<T extends HyperItemType = HyperItemType> {
      * Display name for the HyperItem.
      */
     name: string;
+    /**
+     * @internal use under your own risk.
+     *
+     * Record for storing computed values.
+     */
+    hcache: Record<string, any>;
 }
-
-type InferUserMeta<T> = T extends never ? HyperItemMeta
-    : T extends { meta: infer _Meta; }
-    ? _Meta extends HyperItemMeta ? _Meta : never
-    : HyperItemMeta;
-
-export type GlobalActionableMeta = InferUserMeta<GlobalUserActionable>;
-
-export type GlobalNavigableMeta = InferUserMeta<GlobalUserNavigable>;
 
 export type ItemRequestSource =
     | { type: 'submit'; event: SubmitEvent; }
@@ -107,7 +112,7 @@ export type ActionableError<T extends HyperActionable = HyperActionable> = (args
 
 export type ActionableUnregister<T extends HyperActionable = HyperActionable> = (item: T) => MaybePromise<void>;
 
-export interface HyperActionable extends HyperItemIdentifier<HyperActionableType> {
+export interface HyperActionable extends HyperItemBase<HyperActionableType> {
     /**
      * Category of the HyperItem. Can be used to group items in the palette.
      */
@@ -149,13 +154,13 @@ export interface HyperActionable extends HyperItemIdentifier<HyperActionableType
     /**
      * Overrides the default close action for the palette when the item is executed.
      * 
-     * @see {@link HyperPaletteOptions.closeAction} for more information.
+     * @see {@link PaletteOptions.closeAction} for more information.
      */
     closeAction?: PaletteCloseAction;
     /**
      * Overrides the default close on for HyperCommands.
      * 
-     * @see {@link HyperPaletteOptions.items} for more information.
+     * @see {@link PaletteOptions.items} for more information.
      */
     closeOn?: ActionableCloseOn;
     /**
@@ -171,7 +176,7 @@ export type HyperActionableDefinition =
     & { shortcut?: string | string[]; }
     & Partial<Pick<HyperActionable, 'id' | 'category' | 'description' | 'onRequest' | 'onError' | 'onUnregister' | 'closeAction' | 'closeOn' | 'meta'>>;
 
-export interface HyperNavigable extends HyperItemIdentifier<HyperNavigableType> {
+export interface HyperNavigable extends HyperItemBase<HyperNavigableType> {
     /**
      * A flag indicating whether the HyperPage is an external URL.
      * 
@@ -195,7 +200,7 @@ export interface HyperNavigable extends HyperItemIdentifier<HyperNavigableType> 
     /**
      * Overrides the default close on for HyperPages.
      * 
-     * @see {@link HyperPaletteOptions.items} for more information.
+     * @see {@link PaletteOptions.items} for more information.
      */
     closeOn?: NavigableCloseOn;
     /**
@@ -211,7 +216,7 @@ export type HyperNavigableDefinition = Pick<HyperNavigable, 'url'> & Partial<Pic
 /**
  * @deprecated Not supported yet.
  */
-export interface HyperSearchable extends HyperItemIdentifier<HyperSearchableType> { }
+export interface HyperSearchable extends HyperItemBase<HyperSearchableType> { }
 
 /** 
  * @deprecated Not supported yet.
@@ -227,7 +232,17 @@ export type AnyHyperItem = ItemTypeToItem[HyperItemType];
 
 export type ItemMatcher<T extends AnyHyperItem> = HyperItemId | T | ((item: T) => boolean);
 
-export type HyperItemBaseConfig<T extends HyperItemType> = {
+
+type ItemTypeToSortableKeys =
+    | { [K in HyperActionableType]: Tuple<keyof Pick<HyperActionable, 'category' | 'description' | 'id' | 'name'>> }
+    & { [K in HyperNavigableType]: Tuple<keyof Pick<HyperNavigable, 'id' | 'name' | 'url' | 'urlHostPathname'>> }
+    & { [K in HyperSearchableType]: Tuple<keyof Pick<HyperSearchable, 'id' | 'name'>> };
+
+export type HyperItemSorter<T extends AnyHyperItem> =
+    | ItemTypeToSortableKeys[T['type']]
+    | ((items: T[]) => T[]);
+
+export type HyperModeBaseConfig<T extends HyperItemType> = {
     /**
      * The type of item.
      */
@@ -253,14 +268,27 @@ export type HyperItemBaseConfig<T extends HyperItemType> = {
      */
     shortcut?: string[];
     /**
+     * How the items should be sorted.
+     * 
+     * It can be a list of keys of the item properties to be used in that order to use as the sorting keys
+     * or a function that receives the items and sorts them inplace.
+     * 
+     * If not provided, the items will be sorted by the `mapToSearch` function.
+     */
+    sortBy?: HyperItemSorter<ItemTypeToItem[T]>;
+    /**
      * How to sort the items results.
+     * 
+     * - `SORTED`: The items keep the order of the `sortBy` | `mapToSearch` functions or ascending if sortBy is an array of keys.
+     * - `REVERSE`: Reverses the results of the `SORTED` mode.
+     * - `NONE`: The items are not sorted. They are displayed in the order of registration.
      * 
      * @default "SORTED"
      */
     sortMode?: SortMode;
 };
 
-export interface HyperActionableConfiguration extends HyperItemBaseConfig<HyperActionableType> {
+export interface HyperActionableConfig extends HyperModeBaseConfig<HyperActionableType> {
     /**
      * Defines if the palette should automatically close.
      * 
@@ -276,17 +304,17 @@ export interface HyperActionableConfiguration extends HyperItemBaseConfig<HyperA
     closeOn: ActionableCloseOn;
 }
 
-export type HyperActionableConfig =
+export type HyperActionableOptions =
     Pick<
-        HyperActionableConfiguration,
+        HyperActionableConfig,
         'type' | 'mapToSearch' | 'prefix'
     >
-    & Partial<Pick<
-        HyperActionableConfiguration,
-        'emptyMode' | 'shortcut' | 'sortMode' | 'closeOn'
+    & Partial<Omit<
+        HyperActionableConfig,
+        'type' | 'mapToSearch' | 'prefix'
     >>;
 
-export interface HyperNavigableConfiguration extends HyperItemBaseConfig<HyperNavigableType> {
+export interface HyperNavigableConfig extends HyperModeBaseConfig<HyperNavigableType> {
     /**
      * Defines if the palette should automatically close.
      * 
@@ -331,33 +359,42 @@ export interface HyperNavigableConfiguration extends HyperItemBaseConfig<HyperNa
     onError?: (args: { error: unknown, item: HyperNavigable, source: ItemRequestSource; }) => MaybePromise<void>;
 }
 
-export type HyperNavigableConfig =
+export type HyperNavigableOptions =
     Pick<
-        HyperNavigableConfiguration,
+        HyperNavigableConfig,
         'type' | 'mapToSearch' | 'prefix'
     >
-    & Partial<Pick<
-        HyperNavigableConfiguration,
-        'emptyMode' | 'shortcut' | 'sortMode' | 'closeOn' | 'onError' | 'onExternal' | 'onLocal' | 'onNavigation'
+    & Partial<Omit<
+        HyperNavigableConfig,
+        'type' | 'mapToSearch' | 'prefix'
     >>;
 
 /**
  * @deprecated Not supported yet.
  */
-export interface HyperSearchableConfiguration extends HyperItemBaseConfig<HyperSearchableType> { }
+export interface HyperSearchableConfig extends HyperModeBaseConfig<HyperSearchableType> { }
 
 /**
  * @deprecated Not supported yet.
  */
-export type HyperSearchableConfig =
+export type HyperSearchableOptions =
     Pick<
-        HyperSearchableConfiguration,
+        HyperSearchableConfig,
         'type' | 'mapToSearch' | 'prefix'
     >
-    & Partial<Pick<
-        HyperSearchableConfiguration,
-        'emptyMode' | 'shortcut' | 'sortMode'
+    & Partial<Omit<
+        HyperSearchableConfig,
+        'type' | 'mapToSearch' | 'prefix'
     >>;
+
+type ItemTypeToModeOptions =
+    | { [K in HyperActionableType]: HyperActionableOptions }
+    & { [K in HyperNavigableType]: HyperNavigableOptions }
+    & { [K in HyperSearchableType]: HyperSearchableOptions };
+
+export type AnyHyperModeOptions = {
+    [T in HyperItemType]: ItemTypeToModeOptions[T];
+}[HyperItemType];
 
 export type PaletteElements = {
     palette: HTMLElement;
@@ -365,10 +402,11 @@ export type PaletteElements = {
     form: HTMLFormElement;
     label: HTMLLabelElement;
     input: HTMLInputElement;
+    item: HTMLElement;
 };
 
 export type PaletteIds = {
-    [K in keyof PaletteElements]: string;
+    [K in keyof Omit<PaletteElements, 'item'>]: string;
 };
 
 export type PaletteDefaultsOptions<T extends string = string> = {
@@ -402,9 +440,9 @@ export type PaletteDefaultsOptions<T extends string = string> = {
     search: string;
 };
 
-export type PaletteItemsOptions = Record<string, HyperItemConfig>;
+export type PaletteModesOptions = Record<string, AnyHyperModeOptions>;
 
-export type HyperPaletteOptions = {
+export type PaletteOptions = {
     /**
      * Defines the action to take when the palette is closed.
      * 
@@ -441,13 +479,11 @@ export type HyperPaletteOptions = {
      */
     defaults: PaletteDefaultsOptions<string>;
     /**
-     * The configuration for the different types of items in the palette.
+     * The configuration for the different modes of the palette.
      * 
-     * Providing more items than the default types will create a custom items in the palette.
-     * 
-     * The types for the custom ones can be Registered in the `Register` interface under the `HyperItemType` prop in the `svelte-hypercommands` module.
+     * Each key is the name of the mode and the value is the configuration for that mode.
      */
-    items: Record<string, HyperItemConfig>;
+    modes: PaletteModesOptions;
     /**
      * A `Writable` store to control the open state of the palette from outside.
      */
@@ -476,40 +512,44 @@ export type HyperPaletteOptions = {
     resetOnOpen: boolean;
 };
 
-type MapItemTypeToItemConfig =
-    | { [K in HyperActionableType]: HyperActionableConfig }
-    & { [K in HyperNavigableType]: HyperNavigableConfig }
-    & { [K in HyperSearchableType]: HyperSearchableConfig };
-
-
-export type HyperItemConfig = {
-    [T in HyperItemType]: MapItemTypeToItemConfig[T];
-}[HyperItemType];
-
-
-export type CreatePaletteOptions = DeepPartial<
-    Pick<
-        HyperPaletteOptions,
-        | 'closeAction' | 'closeOnClickOutside' | 'closeOnEscape'
-        | 'debounce'
-        | 'defaults'
-        | 'open' | 'placeholder'
-        | 'portal' | 'resetOnOpen'
+export type CreatePaletteOptions =
+    | DeepPartial<
+        Pick<
+            PaletteOptions,
+            | 'closeAction' | 'closeOnClickOutside' | 'closeOnEscape'
+            | 'debounce'
+            | 'defaults'
+            | 'open' | 'placeholder'
+            | 'portal' | 'resetOnOpen'
+        >
     >
->
-    & {
-        items: PaletteItemsOptions;
-    };
+    & Pick<PaletteOptions, 'modes'>;
 
+export type PaletteModeSort =
+    | {
+        type: 'search';
+        mapper: (item: any) => string;
+        sorter: (items: any[]) => void;
+    }
+    | {
+        type: 'keys';
+        mapper: (item: any) => string;
+        sorter: (items: any[]) => void;
+    }
+    | {
+        type: 'custom';
+        sorter: (items: any[]) => void;
+    };
 
 export type PaletteModeState<
     T extends HyperItemType = HyperItemType,
     Mode extends string = string,
-    Item extends AnyRecord = ItemTypeToItem[T],
+    Item extends AnyHyperItem = ItemTypeToItem[T],
 > =
     {
         mode: Mode;
-        config: MapItemTypeToItemConfig[T];
+        sort: PaletteModeSort;
+        config: ItemTypeToModeOptions[T];
         items: WritableExposed<Item[]>;
         results: WritableExposed<Item[]>;
         history: WritableExposed<HyperItemId[]>;
@@ -525,14 +565,17 @@ export type PaletteSelected = {
     idx: number;
     id: HyperId | string | undefined;
 };
-export type PaletteError<T> = {
-    error: unknown;
-    mode: T;
-    item: AnyHyperItem;
-    source: ItemRequestSource;
-};
 
-export type PaletteItemsReturn<C extends PaletteItemsOptions> = {
+export type PaletteError<T extends PaletteModesOptions, M extends string = keyof T & string> = {
+    [Mode in M]: {
+        error: unknown;
+        mode: Mode;
+        item: ItemTypeToItem[T[Mode]['type']];
+        source: ItemRequestSource;
+    };
+}[M];
+
+export type PaletteModesReturn<C extends PaletteModesOptions> = {
     [K in keyof C]: {
         items: Writable<ItemTypeToItem[C[K]['type']][]>;
         results: Writable<ItemTypeToItem[C[K]['type']][]>;
@@ -541,37 +584,39 @@ export type PaletteItemsReturn<C extends PaletteItemsOptions> = {
     };
 };
 
-export type CreatePaletteReturn<C extends PaletteItemsOptions, Modes extends string = keyof C & string> = {
-    elements: any;
+export type CreatePaletteReturn<T extends PaletteModesOptions, M extends string = keyof T & string> = {
+    elements: {
+        [K in keyof PaletteElements]: any;
+    };
     helpers: {
-        registerItem: <T extends Modes>(mode: T, item: OneOrMany<ItemTypeToItem[C[T]['type']]>, override?: boolean, silent?: boolean) => Cleanup;
-        unregisterItem: <T extends Modes>(mode: T, item: OneOrMany<ItemMatcher<ItemTypeToItem[C[T]['type']]>>) => void;
+        registerItem: <Mode extends M>(mode: Mode, item: OneOrMany<ItemTypeToItem[T[Mode]['type']]>, override?: boolean, silent?: boolean) => Cleanup;
+        unregisterItem: <Mode extends M>(mode: Mode, item: OneOrMany<ItemMatcher<ItemTypeToItem[T[Mode]['type']]>>) => void;
         search: (pattern: string) => void;
-        openPalette: (mode?: Modes) => void;
+        openPalette: (mode?: M) => void;
         closePalette: () => void;
         togglePalette: () => void;
         registerPaletteShortcuts: () => void;
         unregisterPaletteShortcuts: () => void;
-    },
+    };
     states: {
         open: Writable<boolean>;
-        searchText: Writable<string>;
-        mode: Writable<Modes>;
-        portal: Writable<HTMLElement | string | false>;
-        error: Writable<PaletteError<Modes> | undefined>;
+        error: Writable<PaletteError<T> | undefined>;
+        mode: Writable<M>;
+        modes: PaletteModesReturn<T>;
         placeholder: Writable<string | undefined>;
-        items: PaletteItemsReturn<C>;
+        portal: Writable<HTMLElement | string | false>;
+        searchInput: Writable<string>;
     };
 };
 
 function createPalette<T extends CreatePaletteOptions>(
     options: T
-): CreatePaletteReturn<T['items']> {
+): CreatePaletteReturn<T['modes']> {
     return {} as any;
 }
 
 const res = createPalette({
-    items: {
+    modes: {
         commands: {
             type: 'ACTIONABLE',
             mapToSearch: (item) => item.category + item.name,

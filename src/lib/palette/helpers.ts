@@ -18,6 +18,7 @@ export function normalizeActionable(item: HyperActionableDefinition): HyperActio
         closeAction: item.closeAction,
         closeOn: item.closeOn,
         meta: item.meta ?? {},
+        hcache: {},
     };
 }
 
@@ -60,6 +61,7 @@ export function normalizeNavigable(page: HyperNavigableDefinition): HyperNavigab
         urlHostPathname: urlHostPathname,
         external: external,
         meta: page.meta ?? {},
+        hcache: {},
     };
 }
 

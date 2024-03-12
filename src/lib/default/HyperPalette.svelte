@@ -23,7 +23,7 @@
     defaults: {
       placeholder: 'Search pages... ">" for commands...',
     },
-    items: {
+    modes: {
       commands: {
         type: HYPER_ITEM.ACTIONABLE,
         prefix: '>',
@@ -35,6 +35,7 @@
         prefix: '',
         mapToSearch: (page) => page.name + page.urlHostPathname,
         shortcut: ['$mod+P'],
+        sortBy: ['urlHostPathname'],
       },
     },
     resetOnOpen: true,
@@ -92,10 +93,10 @@
   export let a11yInputLabel = 'Palette search';
 
   const { palette, panel, form, label, input, item } = elements;
-  const { open, mode, items } = states;
+  const { open, mode, modes } = states;
 
-  const { results: matchingCommands } = items.commands;
-  const { results: matchingPages } = items.pages;
+  const { results: matchingCommands } = modes.commands;
+  const { results: matchingPages } = modes.pages;
 
   let unregisterCommands: Cleanup;
   let unregisterPages: Cleanup;

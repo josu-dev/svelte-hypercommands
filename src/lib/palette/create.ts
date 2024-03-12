@@ -3,9 +3,9 @@ import { use_clickoutside, use_portal } from '$lib/internal/actions.js';
 import type { Cleanup, OneOrMany, WritableExposed } from '$lib/internal/helpers/index.js';
 import { Searcher, addKeyBinding, builder, exposeWritable, hyperId, writableExposed } from '$lib/internal/helpers/index.js';
 import { tick } from 'svelte';
-import { ACTIONABLE_CLOSE_ON, HYPER_ITEM, NAVIGABLE_CLOSE_ON, NO_RESULTS_MODE, PALETTE_CLOSE_ACTION, PALETTE_ELEMENTS, SORT_MODE } from './constants.js';
+import { ACTIONABLE_CLOSE_ON, HYPER_ITEM, NAVIGABLE_CLOSE_ON, NO_RESULTS_MODE, PALETTE_CLOSE_ACTION, PALETTE_ELEMENTS_IDS, SORT_MODE } from './constants.js';
 import { HyperPaletteError } from './errors.js';
-import type { AnyHyperItem, CreatePaletteOptions, CreatePaletteReturn, HyperActionable, HyperItemConfig, HyperItemType, HyperNavigable, HyperNavigableConfiguration, HyperPaletteOptions, HyperSearchable, ItemMatcher, ItemRequestSource, PaletteError, PaletteIds, PaletteItemsOptions, PaletteModeState, PaletteSelected } from './types.js';
+import type { AnyHyperItem, AnyHyperModeOptions, CreatePaletteOptions, CreatePaletteReturn, HyperActionable, HyperItemType, HyperNavigable, HyperNavigableConfig, HyperSearchable, ItemMatcher, ItemRequestSource, PaletteError, PaletteIds, PaletteModeSort, PaletteModeState, PaletteModesOptions, PaletteOptions, PaletteSelected } from './types.js';
 
 const INTERNAL_KEY = {
     OPEN_PALETTE: '__hyper_open_palette',
@@ -38,8 +38,8 @@ const defaults = {
     portal: false,
     resetOnOpen: false,
 } satisfies (
-        Omit<HyperPaletteOptions, 'defaults' | 'items' | 'open' | 'placeholder'>
-        & { defaults: Pick<HyperPaletteOptions['defaults'], 'open' | 'placeholder' | 'search'>; }
+        Omit<PaletteOptions, 'defaults' | 'modes' | 'open' | 'placeholder'>
+        & { defaults: Pick<PaletteOptions['defaults'], 'open' | 'placeholder' | 'search'>; }
     );
 
 function elementName(name?: string): string {
@@ -48,7 +48,7 @@ function elementName(name?: string): string {
 
 function getIds(initials: Partial<PaletteIds>): PaletteIds {
     const ids = {} as PaletteIds;
-    for (const name of PALETTE_ELEMENTS) {
+    for (const name of PALETTE_ELEMENTS_IDS) {
         ids[name] = initials[name] || hyperId();
     }
     return ids;
@@ -79,7 +79,11 @@ function getInitialMode(modes: Map<string, PaletteModeState>, search: string, in
     return mode;
 }
 
-function getModes<T extends PaletteItemsOptions>(items: T): Map<string, PaletteModeState> {
+function defaultItemSorter(items: AnyHyperItem[]) {
+    items.sort((a, b) => a.hcache.sort.localeCompare(b.hcache.sort));
+}
+
+function getModes<T extends PaletteModesOptions>(items: T): Map<string, PaletteModeState> {
     if (typeof items !== 'object' || items === null) {
         throw new HyperPaletteError(
             `Invalid modes configuration, expected Record<string, PaletteModeOptions> got '${items}'`
@@ -101,7 +105,7 @@ function getModes<T extends PaletteItemsOptions>(items: T): Map<string, PaletteM
             throw new HyperPaletteError(`Duplicate prefix: '${options.prefix}'`);
         }
 
-        let mode_config: HyperItemConfig;
+        let mode_config: AnyHyperModeOptions;
         if (options.type === HYPER_ITEM.ACTIONABLE) {
             mode_config = {
                 type: HYPER_ITEM.ACTIONABLE,
@@ -110,6 +114,7 @@ function getModes<T extends PaletteItemsOptions>(items: T): Map<string, PaletteM
                 closeOn: options.closeOn ?? ACTIONABLE_CLOSE_ON.ALWAYS,
                 emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
                 shortcut: options.shortcut ?? [],
+                sortBy: options.sortBy,
                 sortMode: options.sortMode ?? SORT_MODE.SORTED,
             };
         }
@@ -125,6 +130,7 @@ function getModes<T extends PaletteItemsOptions>(items: T): Map<string, PaletteM
                 onNavigation: options.onNavigation,
                 onError: options.onError,
                 shortcut: options.shortcut ?? [],
+                sortBy: options.sortBy,
                 sortMode: options.sortMode ?? SORT_MODE.SORTED,
             };
         }
@@ -135,6 +141,7 @@ function getModes<T extends PaletteItemsOptions>(items: T): Map<string, PaletteM
                 prefix: options.prefix,
                 emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
                 shortcut: options.shortcut ?? [],
+                sortBy: options.sortBy,
                 sortMode: options.sortMode ?? SORT_MODE.SORTED,
             };
         }
@@ -143,8 +150,49 @@ function getModes<T extends PaletteItemsOptions>(items: T): Map<string, PaletteM
             throw new HyperPaletteError(`Invalid item type: '${options.type}'`);
         }
 
+        let modeSort: PaletteModeSort;
+        if (!mode_config.sortBy) {
+            modeSort = {
+                type: 'search',
+                mapper: mode_config.mapToSearch,
+                sorter: defaultItemSorter
+            };
+        }
+        else if (typeof mode_config.sortBy === 'function') {
+            modeSort = {
+                type: 'custom',
+                sorter: mode_config.sortBy,
+            };
+        }
+        else {
+            if (!Array.isArray(mode_config.sortBy) || mode_config.sortBy.length === 0) {
+                throw new HyperPaletteError(`Invalid sortBy: '${mode_config.sortBy}'`);
+            }
+
+            const keys = mode_config.sortBy;
+            const mapper = (item: AnyHyperItem) => {
+                let result = '';
+                for (const key of keys) {
+                    if (key in item) {
+                        // @ts-expect-error - Run time validated
+                        const value = item[key];
+                        if (typeof value === 'string') {
+                            result += value.trim();
+                        }
+                    }
+                }
+                return result;
+            };
+            modeSort = {
+                type: 'keys',
+                mapper: mapper,
+                sorter: defaultItemSorter
+            };
+        }
+
         const state = {
             mode: mode,
+            sort: modeSort,
             config: mode_config,
             items: writableExposed([]),
             results: writableExposed([]),
@@ -163,16 +211,16 @@ function getModes<T extends PaletteItemsOptions>(items: T): Map<string, PaletteM
     return modes;
 }
 
-export function createPalette<T extends CreatePaletteOptions, Items extends T['items']>(options: T): CreatePaletteReturn<Items> {
-    const safeOptions = { ...defaults, ...options } as HyperPaletteOptions;
+export function createPalette<T extends CreatePaletteOptions, M extends T['modes']>(options: T) {
+    const safeOptions = { ...defaults, ...options } as PaletteOptions;
     safeOptions.defaults = { ...defaults.defaults, ...safeOptions.defaults };
 
     const _internal_cleanup = new Map<string, Cleanup>();
 
-    const _modes = getModes(safeOptions.items);
+    const _modes = getModes(safeOptions.modes);
 
     let _input_el: HTMLInputElement | undefined;
-    let _mode_state: PaletteModeState<HyperItemType> = getInitialMode(
+    let _mode_state: PaletteModeState = getInitialMode(
         _modes,
         safeOptions.defaults.search,
         safeOptions.defaults.mode
@@ -199,7 +247,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
     const closeOnClickOutside = writableExposed(safeOptions.closeOnClickOutside);
     const closeOnEscape = writableExposed(safeOptions.closeOnEscape);
     const debounce = writableExposed(safeOptions.debounce);
-    const error = writableExposed<PaletteError<string> | undefined>(undefined);
+    const error = writableExposed<PaletteError<M> | undefined>(undefined);
     const placeholder = writableExposed(safeOptions.defaults.placeholder);
     const portal = writableExposed(safeOptions.portal);
     const resetOnOpen = writableExposed(safeOptions.resetOnOpen);
@@ -218,12 +266,11 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
     }
 
     function _search_and_update(pattern: string) {
-        // TODO: use the sorted raw items
         let results: AnyHyperItem[];
         if (pattern === '') {
             switch (_mode_state.config.emptyMode) {
                 case NO_RESULTS_MODE.ALL:
-                    results = [..._mode_state.rawAll];
+                    results = [..._mode_state.rawAllSorted];
                     break;
                 case NO_RESULTS_MODE.HISTORY:
                     results = [];
@@ -245,7 +292,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
         }
         else {
             results = _mode_state.searcher.search(pattern);
-            console.log(_mode_state.searcher);
+            _mode_state.sort.sorter(results);
         }
 
         _mode_state.results.set(results);
@@ -356,11 +403,12 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
             error.set(undefined);
         }
         catch (e) {
+            // @ts-expect-error - Its safe to set the error
             error.set({
                 error: e,
                 item: item,
                 source: source,
-                mode: item.type,
+                mode: _mode_state.mode,
             });
             if (item.onError) {
                 item.onError({ error: e, item: item, source: source });
@@ -392,7 +440,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
     async function _resolve_navigable(item: HyperNavigable, source: ItemRequestSource) {
         _mode_state.current.set(item);
 
-        const config = _mode_state.config as HyperNavigableConfiguration;
+        const config = _mode_state.config as HyperNavigableConfig;
         if (item.closeOn === NAVIGABLE_CLOSE_ON.ON_TRIGGER) {
             _resolve_close_action();
         }
@@ -410,11 +458,12 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
             error.set(undefined);
         }
         catch (e) {
+            // @ts-expect-error - Its safe to set the error
             error.set({
                 error: e,
                 item: item,
                 source: source,
-                mode: item.type,
+                mode: _mode_state.mode,
             });
             if (config.onError) {
                 config.onError({ error: e, item: item, source: source });
@@ -541,7 +590,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
     }
 
     function _select_next_result() {
-        const results = _mode_state.items.value;
+        const results = _mode_state.results.value;
         if (!results.length) {
             return;
         }
@@ -561,7 +610,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
     }
 
     function _select_previous_result() {
-        const results = _mode_state.items.value;
+        const results = _mode_state.results.value;
         if (!results.length) {
             return;
         }
@@ -581,7 +630,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
     }
 
     function _register_item<T extends string>(mode: T, item: OneOrMany<AnyHyperItem>, override: boolean = false, silent: boolean = true) {
-        const _mode = _modes.get(mode) as PaletteModeState<HyperItemType>;
+        const _mode = _modes.get(mode) as PaletteModeState;
         const unsafe_items: AnyHyperItem[] = Array.isArray(item) ? item : [item];
         const new_items: AnyHyperItem[] = [];
         const removed_items: AnyHyperItem[] = [];
@@ -595,6 +644,9 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                     break;
                 }
             }
+
+            new_item.hcache.sort = (_mode.sort.type === 'custom' ? '' : _mode.sort.mapper(new_item)).toLowerCase();
+
             if (found_idx === -1) {
                 new_items.push(new_item);
                 _mode.rawAll.push(new_item);
@@ -634,7 +686,14 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
             throw new HyperPaletteError(`Item with id ${new_item.id} already exists in the palette, current ${_mode.rawAll[found_idx]} new ${new_item}`);
         }
 
-        // TODO: sort items
+        _mode.rawAllSorted = [..._mode.rawAll];
+
+        if (_mode.config.sortMode !== SORT_MODE.UNSORTED) {
+            _mode.sort.sorter(_mode.rawAllSorted);
+            if (_mode.config.sortMode === SORT_MODE.REVERSED) {
+                _mode.rawAllSorted.reverse();
+            }
+        }
 
         _mode.items.sync();
 
@@ -670,9 +729,13 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                 if ('onUnregister' in new_item) {
                     new_item.onUnregister?.(new_item);
                 }
+                for (let i = 0; i < _mode.rawAllSorted.length; i++) {
+                    if (_mode.rawAllSorted[i].id === new_item.id) {
+                        _mode.rawAllSorted.splice(i, 1);
+                        break;
+                    }
+                }
             }
-
-            // REMEMBER: no need to sort items because removing items doesn't change the order
 
             _mode.items.sync();
             if (_open.value && _mode_state.mode === mode) {
@@ -682,7 +745,7 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
     }
 
     function _unregister_item<T extends string>(mode: T, selector: OneOrMany<ItemMatcher<AnyHyperItem>>) {
-        const _mode = _modes.get(mode) as PaletteModeState<HyperItemType>;
+        const _mode = _modes.get(mode) as PaletteModeState;
         const selectors = Array.isArray(selector) ? selector : [selector];
 
         let removed_count = 0;
@@ -731,6 +794,12 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
                 }
                 if ('onUnregister' in removed) {
                     removed.onUnregister?.(removed);
+                }
+                for (let i = 0; i < _mode.rawAllSorted.length; i++) {
+                    if (_mode.rawAllSorted[i].id === removed.id) {
+                        _mode.rawAllSorted.splice(i, 1);
+                        break;
+                    }
                 }
             }
         }
@@ -1053,10 +1122,10 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
         }
     });
 
-    function _exposed_state(): CreatePaletteReturn<Items>['states'] {
-        const items: Record<string, any> = {};
+    function _exposed_state(): CreatePaletteReturn<M>['states'] {
+        const modes: Record<string, any> = {};
         for (const [type, mode] of _modes) {
-            items[mode.mode] = {
+            modes[mode.mode] = {
                 items: mode.items,
                 results: mode.results,
                 current: mode.current,
@@ -1065,12 +1134,12 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
         }
         return {
             open: _open,
-            searchText,
+            searchInput: searchText,
             mode: paletteMode,
             error,
             portal,
             placeholder,
-            items: items as any
+            modes: modes as any
         };
     }
 
@@ -1119,5 +1188,5 @@ export function createPalette<T extends CreatePaletteOptions, Items extends T['i
             unregisterPaletteShortcuts: _unregister_palette_shortcuts,
         },
         states: _exposed_state()
-    };
+    } satisfies CreatePaletteReturn<M>;
 }
