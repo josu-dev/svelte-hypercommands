@@ -75,23 +75,23 @@ export function use_portal(el: HTMLElement, target: HTMLElement | string | false
     };
 }
 
-type ClickTypeMap = {
+type ClickTypeToEvent = {
     click: MouseEvent;
     pointerdown: PointerEvent;
     pointerup: PointerEvent;
 };
 
-export type UseClickOutsideOptions<K extends keyof ClickTypeMap> = {
+export type UseClickOutsideOptions<K extends keyof ClickTypeToEvent> = {
     type?: K;
-    handler: (event: ClickTypeMap[K]) => void;
+    handler: (event: ClickTypeToEvent[K]) => void;
 };
 
-export function use_clickoutside<K extends keyof ClickTypeMap>(el: HTMLElement, options: UseClickOutsideOptions<K>) {
+export function use_clickoutside<K extends keyof ClickTypeToEvent>(el: HTMLElement, options: UseClickOutsideOptions<K>) {
     const document = el.ownerDocument;
     let eventType = (options.type || "click") as K;
     let eventHandler = options.handler;
 
-    function onPointerUp(event: ClickTypeMap[K]) {
+    function onPointerUp(event: ClickTypeToEvent[K]) {
         if (!el.contains(event.target as Node) && !event.defaultPrevented) {
             eventHandler(event);
         }

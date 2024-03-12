@@ -504,9 +504,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
     }
 
     async function _resolve_searchable(item: HyperSearchable, source: ItemRequestSource) {
-        throw new HyperPaletteError(
-            `Unimplemented searchable item: ${item} source: ${source}`
-        );
+        throw new HyperPaletteError(`Unimplemented searchable item`);
     }
 
     const _shorcuts_cleanup = new Map<string, Cleanup[]>();
@@ -640,7 +638,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         selected.sync();
     }
 
-    function _register_item<T extends string>(mode: T, item: OneOrMany<AnyHyperItem>, override: boolean = false, silent: boolean = true) {
+    function _register_item<T extends string>(mode: T, item: OneOrMany<AnyHyperItem>, override: boolean = false, silent: boolean = false) {
         const _mode = _modes.get(mode) as PaletteModeState;
         const unsafe_items: AnyHyperItem[] = Array.isArray(item) ? item : [item];
         const new_items: AnyHyperItem[] = [];
@@ -693,7 +691,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             }
 
             throw new HyperPaletteError(
-                `Item with id ${new_item.id} already exists in the palette, current ${_mode.rawAll[found_idx]} new ${new_item}`
+                `Item with id ${new_item.id} already exists in the palette, current ${_mode.rawAll[found_idx].name} new ${new_item.name}`
             );
         }
 
@@ -963,7 +961,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 if (!item) {
                     // NEVER: selected index should always be valid
                     throw new HyperPaletteError(
-                        `Invalid selected index: ${selectedIdx} for ${_mode_state}`
+                        `Invalid selected index: ${selectedIdx} for ${_mode_state.mode}`
                     );
                 }
 
@@ -1113,7 +1111,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                     }
                 }
                 if (!item) {
-                    throw new HyperPaletteError(`Invalid item id: ${el_id} mode: ${_mode_state}`);
+                    throw new HyperPaletteError(`Invalid item id: ${el_id} mode: ${_mode_state.mode}`);
                 }
 
                 selected.value.el = el;
@@ -1190,7 +1188,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             item: builderItem,
         },
         helpers: {
-            registerItem: (type, item, override = false, silent = true) => {
+            registerItem: (type, item, override = false, silent = false) => {
                 if (!_modes.has(type)) {
                     throw new HyperPaletteError(`Custom mode ${type} was not registered`);
                 }
