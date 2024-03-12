@@ -5,7 +5,7 @@ import { Searcher, addKeyBinding, builder, exposeWritable, hyperId, writableExpo
 import { tick } from 'svelte';
 import { ACTIONABLE_CLOSE_ON, HYPER_ITEM, NAVIGABLE_CLOSE_ON, NO_RESULTS_MODE, PALETTE_CLOSE_ACTION, PALETTE_ELEMENTS_IDS, SEARCHABLE_CLOSE_ON, SORT_MODE } from './constants.js';
 import { HyperPaletteError } from './errors.js';
-import type { AnyHyperItem, AnyHyperModeOptions, CreatePaletteOptions, CreatePaletteReturn, HyperActionable, HyperItemType, HyperNavigable, HyperNavigableConfig, HyperSearchable, ItemMatcher, ItemRequestSource, PaletteCloseAction, PaletteError, PaletteIds, PaletteModeSort, PaletteModeState, PaletteModesOptions, PaletteOptions, PaletteSelected } from './types.js';
+import type { AnyHyperItem, AnyHyperModeOptions, CreatePaletteOptions, CreatePaletteReturn, HyperActionable, HyperItemType, HyperNavigable, HyperNavigableConfig, HyperSearchable, HyperSearchableConfig, ItemMatcher, ItemRequestSource, PaletteCloseAction, PaletteError, PaletteIds, PaletteModeSort, PaletteModeState, PaletteModesOptions, PaletteOptions, PaletteSelected } from './types.js';
 
 const INTERNAL_KEY = {
     SHORTCUT_OPEN: '__hyper_open_palette',
@@ -145,6 +145,8 @@ function getModes<T extends PaletteModesOptions>(items: T): Map<string, PaletteM
                 type: HYPER_ITEM.SEARCHABLE,
                 mapToSearch: options.mapToSearch,
                 prefix: options.prefix,
+                onSelection: options.onSelection,
+                onError: options.onError,
                 closeAction: options.closeAction ?? PALETTE_CLOSE_ACTION.RESET_CLOSE,
                 closeOn: options.closeOn ?? SEARCHABLE_CLOSE_ON.ALWAYS,
                 emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
@@ -366,7 +368,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
      */
     function _resolve_close_action(close_action?: PaletteCloseAction) {
         if (!close_action) {
-            close_action = _mode_state.config.closeAction!;
+            close_action = _mode_state.config.closeAction;
         }
 
         const should_reset = close_action === PALETTE_CLOSE_ACTION.RESET || close_action === PALETTE_CLOSE_ACTION.RESET_CLOSE;
@@ -484,7 +486,6 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 || close_on === NAVIGABLE_CLOSE_ON.ALWAYS
             ) {
                 _resolve_close_action();
-
                 _mode_state.current.set(undefined);
                 return;
             }
@@ -499,12 +500,58 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             || close_on === NAVIGABLE_CLOSE_ON.ALWAYS
         ) {
             _resolve_close_action();
-            _mode_state.current.set(undefined);
         }
+
+        _mode_state.current.set(undefined);
     }
 
     async function _resolve_searchable(item: HyperSearchable, source: ItemRequestSource) {
-        throw new HyperPaletteError(`Unimplemented searchable item`);
+        _mode_state.current.set(item);
+
+        const config = _mode_state.config as HyperSearchableConfig;
+        const close_on = item.closeOn ?? config.closeOn;
+        if (close_on === SEARCHABLE_CLOSE_ON.ON_TRIGGER) {
+            _resolve_close_action();
+        }
+
+        try {
+            await config.onSelection({ item, source });
+            error.set(undefined);
+        }
+        catch (e) {
+            // @ts-expect-error - Its safe to set the error
+            error.set({
+                error: e,
+                item: item,
+                source: source,
+                mode: _mode_state.mode,
+            });
+            if (config.onError) {
+                config.onError({ error: e, item: item, source: source });
+            }
+            if (
+                close_on === SEARCHABLE_CLOSE_ON.ON_ERROR
+                || close_on === SEARCHABLE_CLOSE_ON.ALWAYS
+            ) {
+                _resolve_close_action();
+
+                _mode_state.current.set(undefined);
+                return;
+            }
+        }
+        finally {
+            _mode_state.history.value.unshift(item.id);
+            _mode_state.history.sync();
+        }
+
+        if (
+            close_on === SEARCHABLE_CLOSE_ON.ON_SUCCESS
+            || close_on === SEARCHABLE_CLOSE_ON.ALWAYS
+        ) {
+            _resolve_close_action();
+        }
+
+        _mode_state.current.set(undefined);
     }
 
     const _shorcuts_cleanup = new Map<string, Cleanup[]>();

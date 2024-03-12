@@ -45,6 +45,12 @@ export type GlobalUserNavigable = Register extends { HyperNavigable: infer _Conf
     } ? _Config : never
     : { meta: HyperItemMeta; };
 
+export type GlobalUserSearchable = Register extends { HyperSearchable: infer _Config; }
+    ? _Config extends {
+        meta?: HyperItemMeta;
+    } ? _Config : never
+    : { meta: HyperItemMeta; };
+
 export type GlobalUserItemsTrait = {
     [Name in string]: {
         type: HyperItemType;
@@ -62,6 +68,8 @@ type InferUserMeta<T> = T extends never ? HyperItemMeta
 export type GlobalActionableMeta = InferUserMeta<GlobalUserActionable>;
 
 export type GlobalNavigableMeta = InferUserMeta<GlobalUserNavigable>;
+
+export type GlobalSearchableMeta = InferUserMeta<GlobalUserNavigable>;
 
 //
 // Item traits
@@ -247,17 +255,35 @@ export type HyperNavigable =
     & Required<Pick<HyperNavigableDef, 'meta'>>
     & Pick<HyperNavigableDef, 'closeOn'>;
 
-/**
- * @unimplemented
- */
-export interface HyperSearchableDef extends HyperItemBaseDef { }
+export interface HyperSearchableDef extends HyperItemBaseDef {
+    /**
+     * Data that corresponds to the HyperSearchable.
+     * 
+     * It can be any value.
+     */
+    data: any;
+    /**
+     * Overrides the default `closeOn` for the mode of the HyperSearchable.
+     * 
+     * @see {@link PaletteOptions.modes} for more information.
+     */
+    closeOn?: SearchableCloseOn;
+    /**
+     * User-defined metadata of the shape `Record<string, unknown>`.
+     * 
+     * Can be set by extending the `Register` interface with the `HyperSearchable` prop in the `svelte-hypercommands` module.
+     */
+    meta?: GlobalSearchableMeta;
+    /**
+     * Optional display name of the HyperSearchable.
+     */
+    name?: string;
+}
 
-/** 
- * @unimplemented
- */
 export type HyperSearchable =
-    | HyperItemBase<HyperSearchableType>;
-
+    | HyperItemBase<HyperSearchableType>
+    & Required<Pick<HyperSearchableDef, 'data' | 'meta'>>
+    & Pick<HyperSearchableDef, 'closeOn'>;
 
 export type ItemTypeToDef =
     | { [K in HyperActionableType]: HyperActionableDef }
@@ -420,9 +446,6 @@ export type HyperNavigableOptions =
         'type' | 'mapToSearch' | 'prefix'
     >>;
 
-/**
- * @unimplemented Not supported yet.
- */
 export interface HyperSearchableConfig extends HyperModeBaseConfig<HyperSearchableType> {
     /**
      * Defines if the palette should automatically close.
@@ -436,19 +459,37 @@ export interface HyperSearchableConfig extends HyperModeBaseConfig<HyperSearchab
      * @default "ALWAYS"
      */
     closeOn: SearchableCloseOn;
+    /**
+     * Hook to call when the user triggers the searchable item.
+     * 
+     * If its async, the palette will wait for it to resolve before continuing.
+     */
+    onSelection: (args: {
+        item: HyperSearchable;
+        source: ItemRequestSource;
+    }) => MaybePromise<void>;
+    /**
+     * Hook to handle errors during the selection.
+     * 
+     * If its async, the palette won't wait for it to resolve before continuing.
+     * 
+     * If not provided, the error will be silently ignored.
+     */
+    onError?: (args: {
+        error: unknown;
+        item: HyperSearchable;
+        source: ItemRequestSource;
+    }) => MaybePromise<void>;
 }
 
-/**
- * @unimplemented Not supported yet.
- */
 export type HyperSearchableOptions =
     Pick<
         HyperSearchableConfig,
-        'type' | 'mapToSearch' | 'prefix'
+        'type' | 'mapToSearch' | 'prefix' | 'onSelection'
     >
     & Partial<Omit<
         HyperSearchableConfig,
-        'type' | 'mapToSearch' | 'prefix'
+        'type' | 'mapToSearch' | 'prefix' | 'onSelection'
     >>;
 
 type ItemTypeToModeConfig =

@@ -65,6 +65,7 @@ export function normalizeNavigable(item: HyperNavigableDef): HyperNavigable {
         url: item.url,
         urlHostPathname: urlHostPathname,
         external: external,
+        closeOn: item.closeOn,
         meta: item.meta ?? {},
         hcache: {},
     };
@@ -80,7 +81,15 @@ export function defineNavigable(items: NavigablesDefinition): HyperNavigable[] {
 }
 
 export function normalizeSearchable(item: HyperSearchableDef): HyperSearchable {
-    throw new Error('Not implemented');
+    return {
+        type: HYPER_ITEM.SEARCHABLE,
+        id: item.id ?? hyperId(),
+        data: item.data,
+        closeOn: item.closeOn,
+        name: item.name ?? '',
+        meta: item.meta ?? {},
+        hcache: {},
+    };
 }
 
 export function defineSearchable(items: SearchablesDefinition): HyperSearchable[] {
@@ -94,7 +103,7 @@ export function defineSearchable(items: SearchablesDefinition): HyperSearchable[
 
 const dinamicRouteRegex = /\/\[[^\]]+\]/i;
 
-export function definePagesFromRoutes({ root = 'index' } = { root: 'index' }): HyperNavigable[] {
+export function definePagesFromRoutes({ root = 'index' } = { root: 'index' as const }): HyperNavigable[] {
     const modules = import.meta.glob('/src/routes/**/+page.svelte');
     const pages: HyperNavigable[] = [];
     for (const path in modules) {
