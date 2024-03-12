@@ -88,33 +88,33 @@ export type UseClickOutsideOptions<K extends keyof ClickTypeToEvent> = {
 
 export function use_clickoutside<K extends keyof ClickTypeToEvent>(el: HTMLElement, options: UseClickOutsideOptions<K>) {
     const document = el.ownerDocument;
-    let eventType = (options.type || "click") as K;
-    let eventHandler = options.handler;
+    let event_type = (options.type || "click") as K;
+    let event_handler = options.handler;
 
-    function onPointerUp(event: ClickTypeToEvent[K]) {
+    function on_event(event: ClickTypeToEvent[K]) {
         if (!el.contains(event.target as Node) && !event.defaultPrevented) {
-            eventHandler(event);
+            event_handler(event);
         }
     }
 
     const config = { passive: false, capture: true };
-    document.addEventListener(eventType, onPointerUp, config);
+    document.addEventListener(event_type, on_event, config);
 
     return {
         destroy() {
-            document.removeEventListener(eventType, onPointerUp, config);
+            document.removeEventListener(event_type, on_event, config);
         },
-        update(newOptions: Partial<UseClickOutsideOptions<K>>) {
-            if (!newOptions.type) {
-                newOptions.type = eventType;
+        update(updated: Partial<UseClickOutsideOptions<K>>) {
+            if (!updated.type) {
+                updated.type = event_type;
             }
-            if (newOptions.type !== eventType) {
-                document.removeEventListener(eventType, onPointerUp, config);
-                eventType = newOptions.type;
-                document.addEventListener(eventType, onPointerUp, config);
+            if (updated.type !== event_type) {
+                document.removeEventListener(event_type, on_event, config);
+                event_type = updated.type;
+                document.addEventListener(event_type, on_event, config);
             }
-            if (newOptions.handler) {
-                eventHandler = newOptions.handler;
+            if (updated.handler) {
+                event_handler = updated.handler;
             }
         }
     };
