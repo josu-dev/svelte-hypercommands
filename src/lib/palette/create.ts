@@ -3,9 +3,9 @@ import { use_clickoutside, use_portal } from '$lib/internal/actions.js';
 import type { Cleanup, OneOrMany, WritableExposed } from '$lib/internal/helpers/index.js';
 import { Searcher, addKeyBinding, builder, exposeWritable, hyperId, writableExposed } from '$lib/internal/helpers/index.js';
 import { tick } from 'svelte';
-import { ACTIONABLE_CLOSE_ON, HYPER_ITEM, NAVIGABLE_CLOSE_ON, NO_RESULTS_MODE, PALETTE_CLOSE_ACTION, PALETTE_ELEMENTS_IDS, SORT_MODE } from './constants.js';
+import { ACTIONABLE_CLOSE_ON, HYPER_ITEM, NAVIGABLE_CLOSE_ON, NO_RESULTS_MODE, PALETTE_CLOSE_ACTION, PALETTE_ELEMENTS_IDS, SEARCHABLE_CLOSE_ON, SORT_MODE } from './constants.js';
 import { HyperPaletteError } from './errors.js';
-import type { AnyHyperItem, AnyHyperModeOptions, CreatePaletteOptions, CreatePaletteReturn, HyperActionable, HyperItemType, HyperNavigable, HyperNavigableConfig, HyperSearchable, ItemMatcher, ItemRequestSource, PaletteError, PaletteIds, PaletteModeSort, PaletteModeState, PaletteModesOptions, PaletteOptions, PaletteSelected } from './types.js';
+import type { AnyHyperItem, AnyHyperModeOptions, CreatePaletteOptions, CreatePaletteReturn, HyperActionable, HyperItemType, HyperNavigable, HyperNavigableConfig, HyperSearchable, ItemMatcher, ItemRequestSource, PaletteCloseAction, PaletteError, PaletteIds, PaletteModeSort, PaletteModeState, PaletteModesOptions, PaletteOptions, PaletteSelected } from './types.js';
 
 const INTERNAL_KEY = {
     OPEN_PALETTE: '__hyper_open_palette',
@@ -26,7 +26,6 @@ const SR_STYLE = `
 `;
 
 const defaults = {
-    closeAction: PALETTE_CLOSE_ACTION.RESET,
     closeOnClickOutside: true,
     closeOnEscape: true,
     debounce: 150,
@@ -116,6 +115,7 @@ function getModes<T extends PaletteModesOptions>(items: T): Map<string, PaletteM
                 type: HYPER_ITEM.ACTIONABLE,
                 prefix: options.prefix,
                 mapToSearch: options.mapToSearch,
+                closeAction: options.closeAction ?? PALETTE_CLOSE_ACTION.RESET_CLOSE,
                 closeOn: options.closeOn ?? ACTIONABLE_CLOSE_ON.ALWAYS,
                 emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
                 shortcut: options.shortcut ?? [],
@@ -128,6 +128,7 @@ function getModes<T extends PaletteModesOptions>(items: T): Map<string, PaletteM
                 type: HYPER_ITEM.NAVIGABLE,
                 prefix: options.prefix,
                 mapToSearch: options.mapToSearch,
+                closeAction: options.closeAction ?? PALETTE_CLOSE_ACTION.RESET_CLOSE,
                 closeOn: options.closeOn ?? NAVIGABLE_CLOSE_ON.ALWAYS,
                 emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
                 onExternal: options.onExternal ?? ((url: string) => { window.open(url, '_blank'); }),
@@ -144,6 +145,8 @@ function getModes<T extends PaletteModesOptions>(items: T): Map<string, PaletteM
                 type: HYPER_ITEM.SEARCHABLE,
                 mapToSearch: options.mapToSearch,
                 prefix: options.prefix,
+                closeAction: options.closeAction ?? PALETTE_CLOSE_ACTION.RESET_CLOSE,
+                closeOn: options.closeOn ?? SEARCHABLE_CLOSE_ON.ALWAYS,
                 emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
                 shortcut: options.shortcut ?? [],
                 sortBy: options.sortBy,
@@ -181,9 +184,7 @@ function getModes<T extends PaletteModesOptions>(items: T): Map<string, PaletteM
                     if (key in item) {
                         // @ts-expect-error - Run time validated
                         const value = item[key];
-                        if (typeof value === 'string') {
-                            result += value.trim();
-                        }
+                        result += value.toString().trim();
                     }
                 }
                 return result;
@@ -248,7 +249,6 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
     const ids = getIds(safeOptions.defaults.ids ?? {});
     const searchText = writableExposed(safeOptions.defaults.search);
     const paletteMode = writableExposed(_mode_state.mode);
-    const closeAction = writableExposed(safeOptions.closeAction);
     const closeOnClickOutside = writableExposed(safeOptions.closeOnClickOutside);
     const closeOnEscape = writableExposed(safeOptions.closeOnEscape);
     const debounce = writableExposed(safeOptions.debounce);
@@ -364,9 +364,13 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
      * It doesn't reset the current item since it's handled by the specific item
      * resolve function
      */
-    function _resolve_close_action() {
-        const should_reset = closeAction.value === PALETTE_CLOSE_ACTION.RESET || closeAction.value === PALETTE_CLOSE_ACTION.RESET_CLOSE;
-        const should_close = closeAction.value === PALETTE_CLOSE_ACTION.KEEP_CLOSE || closeAction.value === PALETTE_CLOSE_ACTION.RESET_CLOSE;
+    function _resolve_close_action(close_action?: PaletteCloseAction) {
+        if (!close_action) {
+            close_action = _mode_state.config.closeAction!;
+        }
+
+        const should_reset = close_action === PALETTE_CLOSE_ACTION.RESET || close_action === PALETTE_CLOSE_ACTION.RESET_CLOSE;
+        const should_close = close_action === PALETTE_CLOSE_ACTION.KEEP_CLOSE || close_action === PALETTE_CLOSE_ACTION.RESET_CLOSE;
 
         _mode_state.lastInput = searchText.value;
 
@@ -379,32 +383,33 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             _search_and_update('');
         }
 
-        if (should_close && !_open.value) {
-            _open.set(true);
+        if (should_close && _open.value) {
+            _open.set(false);
         }
     }
 
     async function _resolve_actionable(item: HyperActionable, source: ItemRequestSource) {
         _mode_state.current.set(item);
+        const close_on = item.closeOn ?? _mode_state.config.closeOn;
 
-        if (item.closeOn === ACTIONABLE_CLOSE_ON.ON_TRIGGER) {
-            _resolve_close_action();
+        if (close_on === ACTIONABLE_CLOSE_ON.ON_TRIGGER) {
+            _resolve_close_action(item.closeAction);
         }
 
-        const preAction = await item.onRequest({ item, source });
-        if (preAction === false) {
+        const request_arg = await item.onRequest({ item, source });
+        if (request_arg === false) {
             if (
-                item.closeOn === ACTIONABLE_CLOSE_ON.ON_CANCEL
-                || item.closeOn === ACTIONABLE_CLOSE_ON.ALWAYS
+                close_on === ACTIONABLE_CLOSE_ON.ON_CANCEL
+                || close_on === ACTIONABLE_CLOSE_ON.ALWAYS
             ) {
-                _resolve_close_action();
+                _resolve_close_action(item.closeAction);
                 _mode_state.current.set(undefined);
             }
             return;
         }
 
         try {
-            await item.onAction({ item, source, rarg: preAction });
+            await item.onAction({ item, source, rarg: request_arg });
             error.set(undefined);
         }
         catch (e) {
@@ -419,10 +424,10 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 item.onError({ error: e, item: item, source: source });
             }
             if (
-                item.closeOn === ACTIONABLE_CLOSE_ON.ON_ERROR
-                || item.closeOn === ACTIONABLE_CLOSE_ON.ALWAYS
+                close_on === ACTIONABLE_CLOSE_ON.ON_ERROR
+                || close_on === ACTIONABLE_CLOSE_ON.ALWAYS
             ) {
-                _resolve_close_action();
+                _resolve_close_action(item.closeAction);
                 _mode_state.current.set(undefined);
                 return;
             }
@@ -433,10 +438,10 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         }
 
         if (
-            item.closeOn === ACTIONABLE_CLOSE_ON.ON_SUCCESS
-            || item.closeOn === ACTIONABLE_CLOSE_ON.ALWAYS
+            close_on === ACTIONABLE_CLOSE_ON.ON_SUCCESS
+            || close_on === ACTIONABLE_CLOSE_ON.ALWAYS
         ) {
-            _resolve_close_action();
+            _resolve_close_action(item.closeAction);
         }
 
         _mode_state.current.set(undefined);
@@ -446,7 +451,8 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         _mode_state.current.set(item);
 
         const config = _mode_state.config as HyperNavigableConfig;
-        if (item.closeOn === NAVIGABLE_CLOSE_ON.ON_TRIGGER) {
+        const close_on = item.closeOn ?? config.closeOn;
+        if (close_on === NAVIGABLE_CLOSE_ON.ON_TRIGGER) {
             _resolve_close_action();
         }
 
@@ -474,8 +480,8 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 config.onError({ error: e, item: item, source: source });
             }
             if (
-                item.closeOn === NAVIGABLE_CLOSE_ON.ON_ERROR
-                || item.closeOn === NAVIGABLE_CLOSE_ON.ALWAYS
+                close_on === NAVIGABLE_CLOSE_ON.ON_ERROR
+                || close_on === NAVIGABLE_CLOSE_ON.ALWAYS
             ) {
                 _resolve_close_action();
 
@@ -489,8 +495,8 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         }
 
         if (
-            item.closeOn === NAVIGABLE_CLOSE_ON.ON_SUCCESS
-            || item.closeOn === NAVIGABLE_CLOSE_ON.ALWAYS
+            close_on === NAVIGABLE_CLOSE_ON.ON_SUCCESS
+            || close_on === NAVIGABLE_CLOSE_ON.ALWAYS
         ) {
             _resolve_close_action();
             _mode_state.current.set(undefined);
@@ -671,8 +677,6 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 if ('onUnregister' in removed) {
                     removed.onUnregister?.(removed);
                 }
-                // @ts-expect-error - Its safe to remove the item
-                _mode.searcher.remove(removed);
                 removed_items.push(removed);
 
                 _mode.rawAll[found_idx] = new_item;
@@ -690,6 +694,15 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
 
             throw new HyperPaletteError(`Item with id ${new_item.id} already exists in the palette, current ${_mode.rawAll[found_idx]} new ${new_item}`);
         }
+
+        _mode.searcher.remove((item) => {
+            for (const removed of removed_items) {
+                if (item.id === removed.id) {
+                    return true;
+                }
+            }
+            return false;
+        });
 
         _mode.rawAllSorted = [..._mode.rawAll];
 
@@ -726,8 +739,6 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
 
                 _mode.rawAll.splice(idx, 1);
                 _mode.items.value.splice(idx, 1);
-                // @ts-expect-error - Its safe to remove the item
-                _mode.searcher.remove(new_item);
                 if ('shortcut' in new_item) {
                     _unregister_shortcut(new_item);
                 }
@@ -742,6 +753,15 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 }
             }
 
+            _mode.searcher.remove((item) => {
+                for (const removed of removed_items) {
+                    if (item.id === removed.id) {
+                        return true;
+                    }
+                }
+                return false;
+            });
+
             _mode.items.sync();
             if (_open.value && _mode_state.mode === mode) {
                 _update_results();
@@ -753,7 +773,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         const _mode = _modes.get(mode) as PaletteModeState;
         const selectors = Array.isArray(selector) ? selector : [selector];
 
-        let removed_count = 0;
+        const removed_items: AnyHyperItem[] = [];
         const to_remove: number[] = [];
         for (const selector of selectors) {
             to_remove.length = 0;
@@ -785,15 +805,12 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 continue;
             }
 
-            removed_count += to_remove.length;
-
             for (let i = to_remove.length - 1; i >= 0; i--) {
                 const idx = to_remove[i];
                 const removed = _mode.rawAll[idx];
+                removed_items.push(removed);
                 _mode.rawAll.splice(idx, 1);
                 _mode.items.value.splice(idx, 1);
-                // @ts-expect-error - Its safe to remove the item
-                _mode.searcher.remove(removed);
                 if ('shortcut' in removed) {
                     _unregister_shortcut(removed);
                 }
@@ -809,9 +826,18 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             }
         }
 
-        if (removed_count === 0) {
+        if (!removed_items.length) {
             return;
         }
+
+        _mode.searcher.remove((item) => {
+            for (const removed of removed_items) {
+                if (item.id === removed.id) {
+                    return true;
+                }
+            }
+            return false;
+        });
 
         _mode.items.sync();
         if (_open.value && _mode_state.mode === mode) {
@@ -1020,7 +1046,6 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 query = query.slice(_mode_state.config.prefix.length);
 
                 if (force_search) {
-                    console.log(`searching: ${query}`);
                     _search_and_update(query);
                     return;
                 }

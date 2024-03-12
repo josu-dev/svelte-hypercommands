@@ -23,6 +23,8 @@ export type ActionableCloseOn = Values<typeof C.ACTIONABLE_CLOSE_ON>;
 
 export type NavigableCloseOn = Values<typeof C.NAVIGABLE_CLOSE_ON>;
 
+export type SearchableCloseOn = Values<typeof C.SEARCHABLE_CLOSE_ON>;
+
 export type ResultsEmptyMode = Values<typeof C.NO_RESULTS_MODE>;
 
 export type SortMode = Values<typeof C.SORT_MODE>;
@@ -69,6 +71,21 @@ export type HyperItemMeta = Record<string, any>;
 
 export type HyperItemId = HyperId | string;
 
+export interface HyperItemBaseDef {
+    /**
+     * A unique identifier for the HyperItem. It must be unique across all items.
+     * 
+     * If not provided, a random unique identifier will be generated.
+     */
+    id?: HyperItemId;
+    /**
+     * Overrides the default close action for the palette when the item is executed.
+     * 
+     * @see {@link PaletteOptions.closeAction} for more information.
+     */
+    closeAction?: PaletteCloseAction;
+}
+
 export interface HyperItemBase<T extends HyperItemType = HyperItemType> {
     /**
      * @internal do not use.
@@ -99,40 +116,25 @@ export type ItemRequestSource =
     | { type: 'shortcut'; event: KeyboardEvent; shortcut: string; }
     | { type: 'click'; event: MouseEvent; };
 
-export interface HyperItemBaseDef {
-    /**
-     * A unique identifier for the HyperItem. It must be unique across all items.
-     * 
-     * If not provided, a random unique identifier will be generated.
-     */
-    id?: HyperItemId;
-    /**
-     * Overrides the default close action for the palette when the item is executed.
-     * 
-     * @see {@link PaletteOptions.closeAction} for more information.
-     */
-    closeAction?: PaletteCloseAction;
-}
-
 export interface HyperActionableDef<RR = unknown> extends HyperItemBaseDef {
     /**
-     * Display name for the HyperActionable item.
+     * Display name of the HyperActionable.
      */
     name: string;
     /**
-     * Category of the HyperItem. Can be used to group items in the palette.
+     * Category of the HyperActionable. Can be used to group items in the palette.
      */
     category?: string;
     /**
-     * Description of the HyperCommand. Can be used to provide additional information in the palette.
+     * Description of the HyperActionable. Can be used to provide additional information in the palette.
      */
     description?: string;
     /**
-     * Shortcut to trigger the HyperItem.
+     * Shortcut/s to trigger the HyperActionable.
      */
     shortcut?: string[];
     /**
-     * Hook to determine whether the HyperItem can be executed.
+     * Hook to determine whether the HyperActionable can be executed.
      * 
      * If its async, the palette will wait for it to resolve before continuing.
      * 
@@ -145,7 +147,7 @@ export interface HyperActionableDef<RR = unknown> extends HyperItemBaseDef {
         source: ItemRequestSource;
     }) => MaybePromise<RR>;
     /**
-     * Hook to call when the user triggers the HyperItem.
+     * Hook to call when the user triggers the HyperActionable.
      * 
      * If its async, the palette will wait for it to resolve before continuing.
      */
@@ -155,7 +157,7 @@ export interface HyperActionableDef<RR = unknown> extends HyperItemBaseDef {
         source: ItemRequestSource;
     }) => MaybePromise<void>;
     /**
-     * Hook to handle errors during the execution of the HyperItem.
+     * Hook to handle errors during the execution of the HyperActionable.
      * 
      * If its async, the palette won't wait for it to resolve before continuing.
      * 
@@ -167,13 +169,13 @@ export interface HyperActionableDef<RR = unknown> extends HyperItemBaseDef {
         source: ItemRequestSource;
     }) => MaybePromise<void>;
     /**
-     * Hook for cleaning up resources when the HyperItem is unregistered.
+     * Hook for cleaning up resources when the HyperActionable is unregistered.
      */
     onUnregister?: (item: HyperActionable) => void;
     /**
-     * Overrides the default close on for HyperCommands.
+     * Overrides the default `closeOn` for the mode of the HyperActionable.
      * 
-     * @see {@link PaletteOptions.items} for more information.
+     * @see {@link PaletteOptions.modes} for more information.
      */
     closeOn?: ActionableCloseOn;
     /**
@@ -191,29 +193,29 @@ export type HyperActionable<RR = unknown> =
 
 export interface HyperNavigableDef extends HyperItemBaseDef {
     /**
-     * The url of the HyperPage.
+     * The url of the HyperNavigable.
      * 
-     * If the url starts with a '/', it is considered a local url. Otherwise, it is treated as an external url.
+     * If the url starts with '/', it's considered a local url otherwise it's treated as an external url.
      * 
      * External urls must be valid according to the URL standard.
      */
     url: string;
     /**
-     * Display name for the HyperNavigable item.
+     * Display name of the HyperNavigable.
      * 
-     * If not provided, the name will be inferred from the last part of the url.
+     * If not provided, the name will be inferred from the last part of the url pathname or 'index' if the pathname is '/'.
      */
     name?: string;
     /**
-     * Overrides the default close on for HyperPages.
+     * Overrides the default `closeOn` for the mode of the HyperNavigable.
      * 
-     * @see {@link PaletteOptions.items} for more information.
+     * @see {@link PaletteOptions.modes} for more information.
      */
     closeOn?: NavigableCloseOn;
     /**
      * User-defined metadata of the shape `Record<string, unknown>`.
      * 
-     * Can be set by extending the `Register` interface with the `HyperPageMeta` prop in the `svelte-hypercommands` module.
+     * Can be set by extending the `Register` interface with the `HyperNavigable` prop in the `svelte-hypercommands` module.
      */
     meta?: GlobalNavigableMeta;
 }
@@ -222,23 +224,23 @@ export type HyperNavigable =
     | HyperItemBase<HyperNavigableType>
     & {
         /**
-         * Flag indicating whether the HyperPage is an external URL.
+         * Flag indicating whether the HyperNavigable is an external url.
          * 
-         * This is inferred from the provided `url`.
+         * Inferred from the provided `url`.
          */
         readonly external: boolean;
         /**
-         * The url of the HyperPage.
+         * The url of the HyperNavigable.
          * 
-         * If the url starts with a '/', it is considered a local url. Otherwise, it is treated as an external url.
+         * If the url starts with '/', it's considered a local url otherwise it's treated as an external url.
          * 
          * External urls must be valid according to the URL standard.
          */
         readonly url: string;
         /**
-         * The host and pathname of the HyperPage's URL.
+         * The host and pathname of the HyperNavigable.
          * 
-         * For local URLs, this is equivalent to the pathname.
+         * For local urls this is equivalent to the pathname.
          */
         readonly urlHostPathname: string;
     }
@@ -272,19 +274,30 @@ export type AnyHyperItem = ItemTypeToItem[HyperItemType];
 export type ItemMatcher<T extends AnyHyperItem> = HyperItemId | T | ((item: T) => boolean);
 
 type ItemTypeToSortableKeys =
-    | { [K in HyperActionableType]: Tuple<keyof Pick<HyperActionable, 'category' | 'description' | 'id' | 'name'>> }
-    & { [K in HyperNavigableType]: Tuple<keyof Pick<HyperNavigable, 'id' | 'name' | 'url' | 'urlHostPathname'>> }
-    & { [K in HyperSearchableType]: Tuple<keyof Pick<HyperSearchable, 'id' | 'name'>> };
+    | { [K in HyperActionableType]: Tuple<keyof Pick<HyperActionable, 'name' | 'category' | 'description' | 'id'>> }
+    & { [K in HyperNavigableType]: Tuple<keyof Pick<HyperNavigable, 'name' | 'url' | 'urlHostPathname' | 'id'>> }
+    & { [K in HyperSearchableType]: Tuple<keyof Pick<HyperSearchable, 'name' | 'id'>> };
 
-export type HyperItemSorter<T extends AnyHyperItem> =
-    | ItemTypeToSortableKeys[T['type']]
-    | ((items: T[]) => T[]);
+export type HyperItemSorter<T extends HyperItemType, Item extends AnyHyperItem = ItemTypeToItem[T]> =
+    | ItemTypeToSortableKeys[T]
+    | ((items: Item[]) => Item[]);
 
 export type HyperModeBaseConfig<T extends HyperItemType> = {
     /**
-     * The type of item.
+     * The type of HyperItem.
      */
     type: T;
+    /**
+     * Defines the action to take when the palette is closed.
+     * 
+     * - `KEEP`: Keeps the state as is.
+     * - `KEEP_CLOSE`: Keeps the state as is and closes the palette.
+     * - `RESET`: Resets the state to its initial value.
+     * - `RESET_CLOSE`: Resets the state to its initial value and closes the palette.
+     * 
+     * @default "RESET_CLOSE"
+     */
+    closeAction: PaletteCloseAction;
     /**
      * What set of items to display if there is no input.
      * 
@@ -313,7 +326,7 @@ export type HyperModeBaseConfig<T extends HyperItemType> = {
      * 
      * If not provided, the items will be sorted by the `mapToSearch` function.
      */
-    sortBy?: HyperItemSorter<ItemTypeToItem[T]>;
+    sortBy?: HyperItemSorter<T>;
     /**
      * How to sort the items results.
      * 
@@ -408,12 +421,25 @@ export type HyperNavigableOptions =
     >>;
 
 /**
- * @deprecated Not supported yet.
+ * @unimplemented Not supported yet.
  */
-export interface HyperSearchableConfig extends HyperModeBaseConfig<HyperSearchableType> { }
+export interface HyperSearchableConfig extends HyperModeBaseConfig<HyperSearchableType> {
+    /**
+     * Defines if the palette should automatically close.
+     * 
+     * - `ALWAYS`: The palette will close after the selection is successful or an error occurs.
+     * - `NEVER`: The palette will never close automatically.
+     * - `ON_TRIGGER`: The palette will close before starting the selection.
+     * - `ON_SUCCESS`: The palette will close after the selection is successful.
+     * - `ON_ERROR`: The palette will close after an error occurs.
+     * 
+     * @default "ALWAYS"
+     */
+    closeOn: SearchableCloseOn;
+}
 
 /**
- * @deprecated Not supported yet.
+ * @unimplemented Not supported yet.
  */
 export type HyperSearchableOptions =
     Pick<
@@ -482,17 +508,6 @@ export type PaletteModesOptions = Record<string, AnyHyperModeOptions>;
 
 export type PaletteOptions = {
     /**
-     * Defines the action to take when the palette is closed.
-     * 
-     * - `KEEP`: Keeps the state as is.
-     * - `KEEP_CLOSE`: Keeps the state as is and closes the palette.
-     * - `RESET`: Resets the state to its initial value.
-     * - `RESET_CLOSE`: Resets the state to its initial value and closes the palette.
-     * 
-     * @default "RESET"
-     */
-    closeAction: PaletteCloseAction;
-    /**
      * Whether to close the palette when the user clicks outside of it.
      * 
      * @default true
@@ -533,7 +548,7 @@ export type PaletteOptions = {
     /**
      * The target element to append the palette to.
      * 
-     * - `false` no use of a portal.
+     * - `false` portal is disabled.
      * - `string` a css selector for the portal target.
      * - `HTMLElement` the portal target.
      * 
@@ -543,7 +558,7 @@ export type PaletteOptions = {
     /**
      * Whether to reset the palette state when it is opened.
      * 
-     * Using `true` will override the `closeAction` option.
+     * When set to `true` takes precedence over the `closeAction` of the modes.
      * 
      * @default false
      */
@@ -554,7 +569,7 @@ export type CreatePaletteOptions =
     | DeepPartial<
         Pick<
             PaletteOptions,
-            | 'closeAction' | 'closeOnClickOutside' | 'closeOnEscape'
+            | 'closeOnClickOutside' | 'closeOnEscape'
             | 'debounce'
             | 'defaults'
             | 'open' | 'placeholder'
@@ -586,8 +601,8 @@ export type PaletteModeState<
 > =
     {
         mode: Mode;
-        sort: PaletteModeSort;
         config: ItemTypeToModeOptions[T];
+        sort: PaletteModeSort;
         items: WritableExposed<Item[]>;
         results: WritableExposed<Item[]>;
         history: WritableExposed<HyperItemId[]>;
