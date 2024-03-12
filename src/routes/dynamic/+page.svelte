@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { defineActionable } from '$lib/index.js';
   import { helpers, states } from '$lib/default/HyperPalette.svelte';
+  import { defineActionable } from '$lib/index.js';
   import { onDestroy } from 'svelte';
 
   const commands = defineActionable([
@@ -8,7 +8,7 @@
       id: 'dynamic-command-1',
       name: 'Test Dynamic',
       description: 'This command was dynamically added to the command palette',
-      shortcut: '$mod+1',
+      shortcut: ['$mod+1'],
       onAction: ({ source }) => {
         console.info('Dynamic command was executed', source);
       },
@@ -17,7 +17,7 @@
       id: 'dynamic-command-2',
       name: 'Test Alert',
       description: 'This command will alert you',
-      shortcut: '$mod+2',
+      shortcut: ['$mod+2'],
       onAction: () => {
         alert('Alert command was executed');
       },

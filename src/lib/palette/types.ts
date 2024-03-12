@@ -91,7 +91,7 @@ export interface HyperItemBase<T extends HyperItemType = HyperItemType> {
      *
      * Record for storing computed values.
      */
-    hcache: Record<string, any>;
+    readonly hcache: Record<string, any>;
 }
 
 export type ItemRequestSource =
@@ -99,32 +99,38 @@ export type ItemRequestSource =
     | { type: 'shortcut'; event: KeyboardEvent; shortcut: string; }
     | { type: 'click'; event: MouseEvent; };
 
-export type ActionableHookArgs<T extends HyperActionable = HyperActionable> = {
-    item: T;
-    source: ItemRequestSource;
-};
+export interface HyperItemBaseDef {
+    /**
+     * A unique identifier for the HyperItem. It must be unique across all items.
+     * 
+     * If not provided, a random unique identifier will be generated.
+     */
+    id?: HyperItemId;
+    /**
+     * Overrides the default close action for the palette when the item is executed.
+     * 
+     * @see {@link PaletteOptions.closeAction} for more information.
+     */
+    closeAction?: PaletteCloseAction;
+}
 
-export type ActionableRequest<T extends HyperActionable = HyperActionable, RT = any> = (args: ActionableHookArgs<T>) => MaybePromise<false | RT>;
-
-export type ActionableAction<T extends HyperActionable = HyperActionable, RT = any> = (args: ActionableHookArgs<T> & { rargs: RT; }) => MaybePromise<void>;
-
-export type ActionableError<T extends HyperActionable = HyperActionable> = (args: ActionableHookArgs<T> & { error: any; }) => MaybePromise<void>;
-
-export type ActionableUnregister<T extends HyperActionable = HyperActionable> = (item: T) => MaybePromise<void>;
-
-export interface HyperActionable extends HyperItemBase<HyperActionableType> {
+export interface HyperActionableDef<RR = unknown> extends HyperItemBaseDef {
+    /**
+     * Display name for the HyperActionable item.
+     */
+    name: string;
     /**
      * Category of the HyperItem. Can be used to group items in the palette.
      */
-    category: string;
+    category?: string;
     /**
      * Description of the HyperCommand. Can be used to provide additional information in the palette.
      */
-    description: string;
+    description?: string;
     /**
-     * Shortcut/s to trigger the HyperItem.
+     * Shortcut to trigger the HyperItem.
      */
-    shortcut: string[];
+    shortcut?: string[];
     /**
      * Hook to determine whether the HyperItem can be executed.
      * 
@@ -134,29 +140,36 @@ export interface HyperActionable extends HyperItemBase<HyperActionableType> {
      * - Returning `false` prevents the item from being executed.
      * - Returning other value than else will be passed to the `onAction` hook as last argument.
      */
-    onRequest: ActionableRequest;
+    onRequest?: (args: {
+        item: HyperActionable;
+        source: ItemRequestSource;
+    }) => MaybePromise<RR>;
     /**
      * Hook to call when the user triggers the HyperItem.
      * 
      * If its async, the palette will wait for it to resolve before continuing.
      */
-    onAction: ActionableAction;
+    onAction: (args: {
+        item: HyperActionable;
+        rarg: RR;
+        source: ItemRequestSource;
+    }) => MaybePromise<void>;
     /**
      * Hook to handle errors during the execution of the HyperItem.
      * 
+     * If its async, the palette won't wait for it to resolve before continuing.
+     * 
      * If not provided, the error will be silently ignored.
      */
-    onError?: ActionableError;
+    onError?: (args: {
+        error: unknown;
+        item: HyperActionable;
+        source: ItemRequestSource;
+    }) => MaybePromise<void>;
     /**
      * Hook for cleaning up resources when the HyperItem is unregistered.
      */
-    onUnregister?: ActionableUnregister;
-    /**
-     * Overrides the default close action for the palette when the item is executed.
-     * 
-     * @see {@link PaletteOptions.closeAction} for more information.
-     */
-    closeAction?: PaletteCloseAction;
+    onUnregister?: (item: HyperActionable) => void;
     /**
      * Overrides the default close on for HyperCommands.
      * 
@@ -168,21 +181,15 @@ export interface HyperActionable extends HyperItemBase<HyperActionableType> {
      * 
      * Can be set by extending the `Register` interface with the `HyperActionable` prop in the `svelte-hypercommands` module.
      */
-    meta: GlobalActionableMeta;
+    meta?: GlobalActionableMeta;
 }
 
-export type HyperActionableDefinition =
-    | Pick<HyperActionable, 'name' | 'onAction'>
-    & { shortcut?: string | string[]; }
-    & Partial<Pick<HyperActionable, 'id' | 'category' | 'description' | 'onRequest' | 'onError' | 'onUnregister' | 'closeAction' | 'closeOn' | 'meta'>>;
+export type HyperActionable<RR = unknown> =
+    | HyperItemBase<HyperActionableType>
+    & Required<Pick<HyperActionableDef<RR>, 'category' | 'description' | 'onRequest' | 'onAction' | 'shortcut' | 'meta'>>
+    & Pick<HyperActionableDef<RR>, 'onError' | 'onUnregister' | 'closeAction' | 'closeOn'>;
 
-export interface HyperNavigable extends HyperItemBase<HyperNavigableType> {
-    /**
-     * A flag indicating whether the HyperPage is an external URL.
-     * 
-     * This is inferred from the provided `url`.
-     */
-    readonly external: boolean;
+export interface HyperNavigableDef extends HyperItemBaseDef {
     /**
      * The url of the HyperPage.
      * 
@@ -190,13 +197,13 @@ export interface HyperNavigable extends HyperItemBase<HyperNavigableType> {
      * 
      * External urls must be valid according to the URL standard.
      */
-    readonly url: string;
+    url: string;
     /**
-     * The host and pathname of the HyperPage's URL.
+     * Display name for the HyperNavigable item.
      * 
-     * For local URLs, this is equivalent to the pathname.
+     * If not provided, the name will be inferred from the last part of the url.
      */
-    readonly urlHostPathname: string;
+    name?: string;
     /**
      * Overrides the default close on for HyperPages.
      * 
@@ -208,20 +215,52 @@ export interface HyperNavigable extends HyperItemBase<HyperNavigableType> {
      * 
      * Can be set by extending the `Register` interface with the `HyperPageMeta` prop in the `svelte-hypercommands` module.
      */
-    meta: GlobalNavigableMeta;
+    meta?: GlobalNavigableMeta;
 }
 
-export type HyperNavigableDefinition = Pick<HyperNavigable, 'url'> & Partial<Pick<HyperNavigable, 'id' | 'name' | 'meta'>>;
+export type HyperNavigable =
+    | HyperItemBase<HyperNavigableType>
+    & {
+        /**
+         * Flag indicating whether the HyperPage is an external URL.
+         * 
+         * This is inferred from the provided `url`.
+         */
+        readonly external: boolean;
+        /**
+         * The url of the HyperPage.
+         * 
+         * If the url starts with a '/', it is considered a local url. Otherwise, it is treated as an external url.
+         * 
+         * External urls must be valid according to the URL standard.
+         */
+        readonly url: string;
+        /**
+         * The host and pathname of the HyperPage's URL.
+         * 
+         * For local URLs, this is equivalent to the pathname.
+         */
+        readonly urlHostPathname: string;
+    }
+    & Required<Pick<HyperNavigableDef, 'meta'>>
+    & Pick<HyperNavigableDef, 'closeOn'>;
 
 /**
- * @deprecated Not supported yet.
+ * @unimplemented
  */
-export interface HyperSearchable extends HyperItemBase<HyperSearchableType> { }
+export interface HyperSearchableDef extends HyperItemBaseDef { }
 
 /** 
- * @deprecated Not supported yet.
+ * @unimplemented
  */
-export type HyperSearchableDefinition = Partial<HyperSearchable>;
+export type HyperSearchable =
+    | HyperItemBase<HyperSearchableType>;
+
+
+export type ItemTypeToDef =
+    | { [K in HyperActionableType]: HyperActionableDef }
+    & { [K in HyperNavigableType]: HyperNavigableDef }
+    & { [K in HyperSearchableType]: HyperSearchableDef };
 
 export type ItemTypeToItem =
     | { [K in HyperActionableType]: HyperActionable }
@@ -231,7 +270,6 @@ export type ItemTypeToItem =
 export type AnyHyperItem = ItemTypeToItem[HyperItemType];
 
 export type ItemMatcher<T extends AnyHyperItem> = HyperItemId | T | ((item: T) => boolean);
-
 
 type ItemTypeToSortableKeys =
     | { [K in HyperActionableType]: Tuple<keyof Pick<HyperActionable, 'category' | 'description' | 'id' | 'name'>> }

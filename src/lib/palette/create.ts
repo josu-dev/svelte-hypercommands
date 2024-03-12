@@ -66,6 +66,11 @@ function getInitialMode(modes: Map<string, PaletteModeState>, search: string, in
     }
     else if (initial) {
         mode = modes.get(initial);
+        if (!mode) {
+            throw new HyperPaletteError(
+                `Invalid initial mode: '${initial}', expected one of '${Array.from(modes.keys())}'`
+            );
+        }
     }
     if (!mode) {
         mode = modes.values().next().value;
@@ -399,7 +404,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         }
 
         try {
-            await item.onAction({ item, source, rargs: preAction });
+            await item.onAction({ item, source, rarg: preAction });
             error.set(undefined);
         }
         catch (e) {

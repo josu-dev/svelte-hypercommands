@@ -4,7 +4,7 @@
 
   onMount(() => {
     const pagesCleanup = helpers.registerPage(
-      definePage([
+      definePage(
         {
           url: 'https://github.com/J-Josu/svelte-hypercommands',
           name: 'Project Repository',
@@ -27,7 +27,7 @@
         {
           url: '/ending//slash///',
         },
-      ]),
+      ),
     );
 
     return pagesCleanup;

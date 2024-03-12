@@ -2,4 +2,5 @@ export { ACTIONABLE_CLOSE_ON, HC, HYPER_ITEM, NAVIGABLE_CLOSE_ON, NO_RESULTS_MOD
 export { createPalette } from './create.js';
 export { DuplicatedIdError, HyperPaletteError as HyperCommandError } from './errors.js';
 export { defineActionable, defineNavigable, definePagesFromRoutes, defineSearchable, getProjectRoutes, shortcutToKbd } from './helpers.js';
-export type { HyperActionable, HyperActionableDefinition, HyperNavigable, HyperNavigableDefinition, HyperSearchable, HyperSearchableDefinition, ItemMatcher } from './types.js';
+export type { ActionablesDefinition, NavigablesDefinition, SearchablesDefinition } from './helpers.js';
+export type { HyperActionable, HyperActionableDef, HyperNavigable, HyperNavigableDef, HyperSearchable, HyperSearchableDef, ItemMatcher } from './types.js';

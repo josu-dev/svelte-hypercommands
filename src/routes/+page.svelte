@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { defineActionable } from '$lib/index.js';
   import { helpers, states } from '$lib/default/HyperPalette.svelte';
+  import { defineActionable } from '$lib/index.js';
   import { onDestroy } from 'svelte';
 
   const command = defineActionable([
@@ -8,8 +8,11 @@
       id: 'dynamic-command-1',
       name: 'Dynamic console log',
       description: 'This command was dynamically added to the command palette',
-      shortcut: '$mod+1',
-      onAction: () => {
+      shortcut: ['$mod+1'],
+      onRequest: () => {
+        return 98;
+      },
+      onAction: ({ rarg }) => {
         console.info('Dynamic command was executed on home page');
       },
     },
@@ -17,8 +20,8 @@
       id: 'dynamic-command-2',
       name: 'Dynamic Alert',
       description: 'This command will alert you',
-      shortcut: '$mod+2',
-      onAction: () => {
+      shortcut: ['$mod+2'],
+      onAction: ({ rarg }) => {
         alert('Alert command was executed on home page');
       },
     },
@@ -26,8 +29,11 @@
       id: 'dynamic-command-3',
       name: 'Dynamic copy URL',
       description: 'This command will copy the URL to your clipboard',
-      shortcut: '$mod+3',
-      onAction: () => {
+      shortcut: ['$mod+3'],
+      onRequest: () => {
+        return [12313, { pedro: 1 }];
+      },
+      onAction: ({ rarg }) => {
         navigator.clipboard.writeText(window.location.href);
         alert('Copied URL to clipboard on home page');
       },
@@ -36,7 +42,7 @@
       id: 'dynamic-command-4',
       name: 'Dynamic console log 2',
       description: 'This command was dynamically added to the command palette',
-      shortcut: '$mod+4',
+      shortcut: ['$mod+4'],
       onAction: () => {
         console.info('Dynamic command was executed on home page');
       },
@@ -45,7 +51,7 @@
       id: 'dynamic-command-5',
       name: 'Dynamic Alert 2',
       description: 'This command will alert you',
-      shortcut: '$mod+5',
+      shortcut: ['$mod+5'],
       onAction: () => {
         alert('Alert command was executed on home page');
       },
@@ -54,7 +60,7 @@
       id: 'dynamic-command-6',
       name: 'Dynamic copy URL 2',
       description: 'This command will copy the URL to your clipboard',
-      shortcut: '$mod+6',
+      shortcut: ['$mod+6'],
       onAction: () => {
         navigator.clipboard.writeText(window.location.href);
         alert('Copied URL to clipboard on home page');

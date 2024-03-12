@@ -1,9 +1,16 @@
 import { hyperId, noop } from '$lib/internal/helpers/index.js';
-import type { OneOrMany } from '$lib/internal/helpers/types.js';
 import { HYPER_ITEM } from './constants.js';
-import type { HyperActionable, HyperActionableDefinition, HyperNavigable, HyperNavigableDefinition, HyperSearchable, HyperSearchableDefinition } from './types.js';
+import type { HyperActionable, HyperActionableDef, HyperNavigable, HyperNavigableDef, HyperSearchable, HyperSearchableDef } from './types.js';
 
-export function normalizeActionable(item: HyperActionableDefinition): HyperActionable {
+export type ActionablesDefinition<T extends any[] = any[]> = {
+    [K in keyof T]: HyperActionableDef<T[K]>;
+};
+
+export type NavigablesDefinition = HyperNavigableDef[];
+
+export type SearchablesDefinition = HyperSearchableDef[];
+
+export function normalizeActionable(item: HyperActionableDef): HyperActionable {
     return {
         type: HYPER_ITEM.ACTIONABLE,
         id: item.id ?? hyperId(),
@@ -22,24 +29,22 @@ export function normalizeActionable(item: HyperActionableDefinition): HyperActio
     };
 }
 
-export function defineActionable(item: OneOrMany<HyperActionableDefinition>): HyperActionable[] {
-    item = Array.isArray(item) ? item : [item];
-
-    const normalized_items = [];
-    for (const i of item) {
-        normalized_items.push(normalizeActionable(i));
+export function defineActionable<T extends [any, ...any]>(items: ActionablesDefinition<T>): HyperActionable[] {
+    const normalized = [];
+    for (const item of items) {
+        normalized.push(normalizeActionable(item));
     }
 
-    return normalized_items;
+    return normalized;
 }
 
-export function normalizeNavigable(page: HyperNavigableDefinition): HyperNavigable {
-    const external = !page.url.startsWith('/');
-    let cleanUrl = page.url.split('?')[0];
+export function normalizeNavigable(item: HyperNavigableDef): HyperNavigable {
+    const external = !item.url.startsWith('/');
+    let cleanUrl = item.url.split('?')[0];
     let urlHostPathname;
 
     if (external) {
-        const _url = new URL(page.url);
+        const _url = new URL(item.url);
         urlHostPathname = _url.host + _url.pathname;
     }
     else {
@@ -51,49 +56,45 @@ export function normalizeNavigable(page: HyperNavigableDefinition): HyperNavigab
         urlHostPathname = urlHostPathname.replace(/\/{1,}$/, '');
     }
 
-    const name = page.name ?? (cleanUrl.split('/').at(-1) || 'index');
+    const name = item.name ?? (cleanUrl.split('/').at(-1) || 'index');
 
     return {
         type: HYPER_ITEM.NAVIGABLE,
-        id: page.url,
+        id: item.id ?? item.url,
         name: name,
-        url: page.url,
+        url: item.url,
         urlHostPathname: urlHostPathname,
         external: external,
-        meta: page.meta ?? {},
+        meta: item.meta ?? {},
         hcache: {},
     };
 }
 
-export function defineNavigable(item: OneOrMany<HyperNavigableDefinition>): HyperNavigable[] {
-    item = Array.isArray(item) ? item : [item];
-
-    const normalized_items = [];
-    for (const i of item) {
-        normalized_items.push(normalizeNavigable(i));
+export function defineNavigable(items: NavigablesDefinition): HyperNavigable[] {
+    const normalized = [];
+    for (const item of items) {
+        normalized.push(normalizeNavigable(item));
     }
 
-    return normalized_items;
+    return normalized;
 }
 
-export function normalizeSearchable(item: HyperSearchableDefinition): HyperSearchable {
+export function normalizeSearchable(item: HyperSearchableDef): HyperSearchable {
     throw new Error('Not implemented');
 }
 
-export function defineSearchable(item: OneOrMany<HyperSearchableDefinition>): HyperSearchable[] {
-    item = Array.isArray(item) ? item : [item];
-
-    const normalized_items = [];
-    for (const i of item) {
-        normalized_items.push(normalizeSearchable(i));
+export function defineSearchable(items: SearchablesDefinition): HyperSearchable[] {
+    const normalized = [];
+    for (const item of items) {
+        normalized.push(normalizeSearchable(item));
     }
 
-    return normalized_items;
+    return normalized;
 }
 
 const dinamicRouteRegex = /\/\[[^\]]+\]/i;
 
-export function definePagesFromRoutes({ rootName = 'root' } = { rootName: 'root' }): HyperNavigable[] {
+export function definePagesFromRoutes({ root = 'index' } = { root: 'index' }): HyperNavigable[] {
     const modules = import.meta.glob('/src/routes/**/+page.svelte');
     const pages: HyperNavigable[] = [];
     for (const path in modules) {
@@ -103,7 +104,7 @@ export function definePagesFromRoutes({ rootName = 'root' } = { rootName: 'root'
 
         const rawURL = path.slice(11, path.length > 24 ? -13 : -12);
         const url = rawURL.replaceAll(/\([^)]+\)\//ig, '');
-        const name = url.split('/').pop() || rootName;
+        const name = url.split('/').pop() || root;
         pages.push(normalizeNavigable({ name: name, url: url }));
     }
     return pages;

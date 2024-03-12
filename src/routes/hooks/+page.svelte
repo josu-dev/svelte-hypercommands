@@ -4,7 +4,7 @@
 
   onMount(() => {
     const commandsCleanup = helpers.registerCommand(
-      defineCommand([
+      defineCommand(
         {
           id: 'dynamic-command-no-execute',
           name: 'This command will not execute',
@@ -51,7 +51,7 @@
             console.info('Unregistered command from /hooks', command);
           },
         },
-      ]),
+      ),
     );
 
     return commandsCleanup;

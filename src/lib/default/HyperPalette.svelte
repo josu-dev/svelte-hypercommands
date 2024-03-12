@@ -1,10 +1,11 @@
 <script lang="ts" context="module">
   import type {
+    ActionablesDefinition,
+    Cleanup,
     HyperActionable,
-    HyperActionableDefinition,
     HyperNavigable,
-    HyperNavigableDefinition,
     ItemMatcher,
+    NavigablesDefinition,
     OneOrMany,
   } from '$lib/index.js';
   import {
@@ -19,7 +20,7 @@
     PAGES: 'pages',
   } as const;
 
-  const state = createPalette({
+  const _palette = createPalette({
     defaults: {
       placeholder: 'Search pages... ">" for commands...',
     },
@@ -41,50 +42,58 @@
     resetOnOpen: true,
   });
 
-  function registerCommand(items: OneOrMany<HyperActionable>) {
-    return state.helpers.registerItem(MODE.COMMANDS, items);
+  function registerCommand(items: OneOrMany<HyperActionable>): Cleanup {
+    return _palette.helpers.registerItem(MODE.COMMANDS, items);
   }
 
-  function registerPage(items: OneOrMany<HyperNavigable>) {
-    return state.helpers.registerItem(MODE.PAGES, items);
+  function registerPage(items: OneOrMany<HyperNavigable>): Cleanup {
+    return _palette.helpers.registerItem(MODE.PAGES, items);
   }
 
   function unregisterCommand(
     selector: OneOrMany<ItemMatcher<HyperActionable>>,
-  ) {
-    return state.helpers.unregisterItem(MODE.COMMANDS, selector);
+  ): void {
+    return _palette.helpers.unregisterItem(MODE.COMMANDS, selector);
   }
 
-  function unregisterPage(selector: OneOrMany<ItemMatcher<HyperNavigable>>) {
-    return state.helpers.unregisterItem(MODE.PAGES, selector);
+  function unregisterPage(
+    selector: OneOrMany<ItemMatcher<HyperNavigable>>,
+  ): void {
+    return _palette.helpers.unregisterItem(MODE.PAGES, selector);
   }
 
-  export const elements = state.elements;
-  export const states = state.states;
+  export const elements = _palette.elements;
+
+  export const states = _palette.states;
+
   export const helpers = {
     registerCommand,
     registerPage,
     unregisterCommand,
     unregisterPage,
-    openAsCommands: () => state.helpers.openPalette(MODE.COMMANDS),
-    openAsPages: () => state.helpers.openPalette(MODE.PAGES),
-    toggleOpen: () => state.helpers.togglePalette(),
-    close: () => state.helpers.closePalette(),
-    search: (query: string) => state.helpers.search(query),
-    registerDefaultShortcuts: () => state.helpers.registerPaletteShortcuts(),
+    openAsCommands: () => _palette.helpers.openPalette(MODE.COMMANDS),
+    openAsPages: () => _palette.helpers.openPalette(MODE.PAGES),
+    toggleOpen: () => _palette.helpers.togglePalette(),
+    close: () => _palette.helpers.closePalette(),
+    search: (query: string) => _palette.helpers.search(query),
+    registerDefaultShortcuts: () => _palette.helpers.registerPaletteShortcuts(),
     unregisterDefaultShortcuts: () =>
-      state.helpers.unregisterPaletteShortcuts(),
+      _palette.helpers.unregisterPaletteShortcuts(),
   };
-  export function defineCommand(items: OneOrMany<HyperActionableDefinition>) {
+
+  export function defineCommand<T extends [any, ...any]>(
+    ...items: ActionablesDefinition<T>
+  ) {
     return defineActionable(items);
   }
-  export function definePage(items: OneOrMany<HyperNavigableDefinition>) {
+
+  export function definePage(...items: NavigablesDefinition) {
     return defineNavigable(items);
   }
 </script>
 
 <script lang="ts">
-  import { shortcutToKbd, type Cleanup } from '$lib/index.js';
+  import { shortcutToKbd } from '$lib/index.js';
   import { isBrowser } from '$lib/internal/helpers/index.js';
   import { onMount } from 'svelte';
 
