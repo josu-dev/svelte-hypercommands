@@ -451,6 +451,11 @@ export type HyperSearchableOptions =
         'type' | 'mapToSearch' | 'prefix'
     >>;
 
+type ItemTypeToModeConfig =
+    | { [K in HyperActionableType]: HyperActionableConfig }
+    & { [K in HyperNavigableType]: HyperNavigableConfig }
+    & { [K in HyperSearchableType]: HyperSearchableConfig };
+
 type ItemTypeToModeOptions =
     | { [K in HyperActionableType]: HyperActionableOptions }
     & { [K in HyperNavigableType]: HyperNavigableOptions }
@@ -601,7 +606,7 @@ export type PaletteModeState<
 > =
     {
         mode: Mode;
-        config: ItemTypeToModeOptions[T];
+        config: ItemTypeToModeConfig[T];
         sort: PaletteModeSort;
         items: WritableExposed<Item[]>;
         results: WritableExposed<Item[]>;
@@ -619,33 +624,33 @@ export type PaletteSelected = {
     id: HyperId | string | undefined;
 };
 
-export type PaletteError<T extends PaletteModesOptions, M extends string = keyof T & string> = {
-    [Mode in M]: {
+export type PaletteError<T extends PaletteModesOptions, Modes extends string = keyof T & string> = {
+    [Mode in Modes]: {
         error: unknown;
         mode: Mode;
         item: ItemTypeToItem[T[Mode]['type']];
         source: ItemRequestSource;
     };
-}[M];
+}[Modes];
 
-export type PaletteModesReturn<C extends PaletteModesOptions> = {
-    [K in keyof C]: {
-        items: Writable<ItemTypeToItem[C[K]['type']][]>;
-        results: Writable<ItemTypeToItem[C[K]['type']][]>;
+export type PaletteModesReturn<T extends PaletteModesOptions> = {
+    [Mode in keyof T]: {
+        items: Writable<ItemTypeToItem[T[Mode]['type']][]>;
+        results: Writable<ItemTypeToItem[T[Mode]['type']][]>;
         history: Writable<HyperItemId[]>;
-        current: Writable<ItemTypeToItem[C[K]['type']] | undefined>;
+        current: Writable<ItemTypeToItem[T[Mode]['type']] | undefined>;
     };
 };
 
-export type CreatePaletteReturn<T extends PaletteModesOptions, M extends string = keyof T & string> = {
+export type CreatePaletteReturn<T extends PaletteModesOptions, Modes extends string = keyof T & string> = {
     elements: {
         [K in keyof PaletteElements]: any;
     };
     helpers: {
-        registerItem: <Mode extends M>(mode: Mode, item: OneOrMany<ItemTypeToItem[T[Mode]['type']]>, override?: boolean, silent?: boolean) => Cleanup;
-        unregisterItem: <Mode extends M>(mode: Mode, item: OneOrMany<ItemMatcher<ItemTypeToItem[T[Mode]['type']]>>) => void;
+        registerItem: <Mode extends Modes>(mode: Mode, item: OneOrMany<ItemTypeToItem[T[Mode]['type']]>, override?: boolean, silent?: boolean) => Cleanup;
+        unregisterItem: <Mode extends Modes>(mode: Mode, item: OneOrMany<ItemMatcher<ItemTypeToItem[T[Mode]['type']]>>) => void;
         search: (pattern: string) => void;
-        openPalette: (mode?: M) => void;
+        openPalette: (mode?: Modes) => void;
         closePalette: () => void;
         togglePalette: () => void;
         registerPaletteShortcuts: () => void;
@@ -654,27 +659,10 @@ export type CreatePaletteReturn<T extends PaletteModesOptions, M extends string 
     states: {
         open: Writable<boolean>;
         error: Writable<PaletteError<T> | undefined>;
-        mode: Writable<M>;
+        mode: Writable<Modes>;
         modes: PaletteModesReturn<T>;
         placeholder: Writable<string | undefined>;
         portal: Writable<HTMLElement | string | false>;
         searchInput: Writable<string>;
     };
 };
-
-function createPalette<T extends CreatePaletteOptions>(
-    options: T
-): CreatePaletteReturn<T['modes']> {
-    return {} as any;
-}
-
-const res = createPalette({
-    modes: {
-        commands: {
-            type: 'ACTIONABLE',
-            mapToSearch: (item) => item.category + item.name,
-            prefix: '!',
-            closeOn: 'ALWAYS',
-        },
-    }
-});

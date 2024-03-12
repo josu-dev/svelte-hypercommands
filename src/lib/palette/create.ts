@@ -8,8 +8,8 @@ import { HyperPaletteError } from './errors.js';
 import type { AnyHyperItem, AnyHyperModeOptions, CreatePaletteOptions, CreatePaletteReturn, HyperActionable, HyperItemType, HyperNavigable, HyperNavigableConfig, HyperSearchable, ItemMatcher, ItemRequestSource, PaletteCloseAction, PaletteError, PaletteIds, PaletteModeSort, PaletteModeState, PaletteModesOptions, PaletteOptions, PaletteSelected } from './types.js';
 
 const INTERNAL_KEY = {
-    OPEN_PALETTE: '__hyper_open_palette',
-    CLOSE_PALETTE: '__hyper_close_palette',
+    SHORTCUT_OPEN: '__hyper_open_palette',
+    SHORCUT_CLOSE: '__hyper_close_palette',
     DATASET_HYPER_ID: 'hyperId',
 } as const;
 
@@ -567,7 +567,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 }
             }
         }
-        _shorcuts_cleanup.set(INTERNAL_KEY.OPEN_PALETTE, cleanup);
+        _shorcuts_cleanup.set(INTERNAL_KEY.SHORTCUT_OPEN, cleanup);
     }
 
     function _register_escape_shortcut() {
@@ -576,20 +576,20 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             _close_palette();
         }, { once: true });
         if (cleanup) {
-            _internal_cleanup.set(INTERNAL_KEY.CLOSE_PALETTE, cleanup);
+            _internal_cleanup.set(INTERNAL_KEY.SHORCUT_CLOSE, cleanup);
         }
     }
 
     function _unregister_escape_shortcut() {
-        const cleanup = _internal_cleanup.get(INTERNAL_KEY.CLOSE_PALETTE);
+        const cleanup = _internal_cleanup.get(INTERNAL_KEY.SHORCUT_CLOSE);
         if (cleanup) {
             cleanup();
-            _internal_cleanup.delete(INTERNAL_KEY.CLOSE_PALETTE);
+            _internal_cleanup.delete(INTERNAL_KEY.SHORCUT_CLOSE);
         }
     }
 
     function _unregister_palette_shortcuts() {
-        for (const key of [INTERNAL_KEY.OPEN_PALETTE, INTERNAL_KEY.CLOSE_PALETTE]) {
+        for (const key of [INTERNAL_KEY.SHORTCUT_OPEN, INTERNAL_KEY.SHORCUT_CLOSE]) {
             const cleanup = _shorcuts_cleanup.get(key);
             if (cleanup) {
                 for (const c of cleanup) {
@@ -692,7 +692,9 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 continue;
             }
 
-            throw new HyperPaletteError(`Item with id ${new_item.id} already exists in the palette, current ${_mode.rawAll[found_idx]} new ${new_item}`);
+            throw new HyperPaletteError(
+                `Item with id ${new_item.id} already exists in the palette, current ${_mode.rawAll[found_idx]} new ${new_item}`
+            );
         }
 
         _mode.searcher.remove((item) => {
@@ -1159,7 +1161,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
 
     function _exposed_state(): CreatePaletteReturn<M>['states'] {
         const modes: Record<string, any> = {};
-        for (const [type, mode] of _modes) {
+        for (const mode of _modes.values()) {
             modes[mode.mode] = {
                 items: mode.items,
                 results: mode.results,
