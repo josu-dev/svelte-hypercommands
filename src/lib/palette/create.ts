@@ -330,12 +330,8 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             if (!_open.value || !_input_el) {
                 return;
             }
-            if (resetOnOpen.value) {
-                _input_el.value = _mode_state.config.prefix;
-            }
-            else {
-                _input_el.value = _mode_state.config.prefix + searchText.value;
-            }
+            
+            _input_el.value = searchText.value;
             _input_el.focus();
         });
 
@@ -343,6 +339,9 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         _open.set(true);
 
         if (!resetOnOpen.value) {
+            if (!searchText.value.startsWith(_mode_state.config.prefix)) {
+                searchText.set(_mode_state.config.prefix);
+            }
             return;
         }
 
