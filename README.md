@@ -1,10 +1,10 @@
 # Hypercommands
 
-**svelte-hypercommands** is a dependancy free Headless Command Palette for [SvelteKit][svelte-kit] with a default component implementation.
+**svelte-hypercommands** is a dependancy free Headless Palette for creating command/navigation/search palettes for your [Svelte][svelte] and [SvelteKit][svelte-kit] app.
 
-It originally started as a rework of [Svelte-Command-Palette][svelte-command-palette] with the main objective of making it fully headless for enabling complete customization and extensibility as well as adding some extra features like dynamic commands and support for page navigation. It ended up being a complete rewrite with a different approach and a different API.
+The main objetive is enabling complete customization and extensibility of a base Command Palette component while providing a default implementation that can be used out of the box.
 
-Its important to remark that the `headless logic` is the one implemented by [Melt-UI][melt-ui] and the `keybindings logic` is a modified version of [Tinykeys][tinykeys]. Each of these libraries deserve all the credit for their work.
+Its important to remark that the `headless logic` comes from [Melt-UI][melt-ui] and the `keybindings logic` is a modified version of [Tinykeys][tinykeys]. Each of these libraries deserve all the credit for their work.
 
 > [!IMPORTANT]
 > This library is still in early development and the API is subject to breaking changes.
@@ -12,13 +12,14 @@ Its important to remark that the `headless logic` is the one implemented by [Mel
 
 ## Features
 
-- Headless logic
-- Default implementation
-- Pages/Commands mode
-- Dynamic pages/commands
-- Keybindings support for commands
+- Actionable/Navigable/Searchable types
+- Default implementation (commmands/pages modes)
 - Dependency free
+- Dynamic registration
 - Fully typed
+- Headless logic
+- Keybindings support for actionables
+- SSR support
 
 
 ## Installation
@@ -34,77 +35,89 @@ yarn add svelte-hypercommands
 
 ## Getting started
 
-The library has a default implementation that can be used as a standalone component styled as the VSCode Command Palette.
+The library is composed of two main parts: the default implementation and the headless logic.
 
-It can be used in your root `+layout.svelte` as follows:
+The default implementation is a standalone component that can be used out of the box, while the headless logic can be used to create your own implementation for different palettes.
+
+
+### Default implementation
+
+The default implementation mimics the behavior of the VSCode Command Palette, with two modes: `commands` and `pages`.
+
+The `commands` mode is used to display a list of actionable items, while the `pages` mode is used to display a list of routes to navigate to.
+
+If you want the palette to be globally available, use it in your global layout or in a layout that is used in all your pages.
 
 ```svelte
-<script lang="ts">
-  import { appRoutesAsPages, defineCommand } from 'svelte-hypercommands';
-  import CommandPalette from 'svelte-hypercommands/CommandPalette.svelte';
+<script>
+  import { navigablesFromRoutes } from 'svelte-hypercommands';
+  import HyperPalette, { defineCommand } from 'svelte-hypercommands/HyperPalette.svelte';
 
-  const globalCommands = defineCommand([
+  const globalCommands = defineCommand(
     {
       name: 'Copy Current URL',
       description: 'Copy the current URL to your clipboard',
-      shortcut: '$mod+Shift+C',
+      shortcut: ['$mod+Shift+C'],
       onAction: () => {
         navigator.clipboard.writeText(window.location.href);
         alert('Copied URL to clipboard');
-      },
+      }
     },
     {
       name: 'Reload Window',
       description: 'Reload the current window',
-      shortcut: '$mod+Shift+R',
+      shortcut: ['$mod+Shift+R'],
       onAction: () => {
         window.location.reload();
-      },
-    },
-  ]);
+      }
+    }
+  );
 
-  const globalPages = appRoutesAsPages();
+  const globalPages = navigablesFromRoutes();
 </script>
 
-<CommandPalette pages={globalPages} commands={globalCommands} />
+<HyperPalette commands={globalCommands} pages={globalPages} />
 
 <slot />
+
+<!-- or in svelte 5 -->
+
+{@render children()}
 ```
 
-For adding dynamic pages/commands, you can use the helpers exported by the component:
+For adding dynamic commands/pages you can use the helpers exported by the component:
 
 ```svelte
-<script lang="ts">
+<script>
+  import { defineCommand, definePage, helpers } from 'svelte-hypercommands/HyperPalette.svelte';
   import { onMount } from 'svelte';
-  import { helpers } from 'svelte-hypercommands/CommandPalette.svelte';
 
   onMount(() => {
-    const unregisterPages = helpers.registerPage([
-      {
-        url: 'https://kit.svelte.dev/docs/introduction',
-        name: 'SvelteKit Docs',
-        description: 'Link to the Official SvelteKit documentation',
-      },
-      {
-        url: 'https://google.com',
-        name: 'Google',
-        description: 'Link to Google',
-      },
-    ]);
-    
-    const unregisterCommands = helpers.registerCommand([
-      {
-        name: 'Say hello world',
-        description: 'Alerts hello world',
-        onAction: () => {
-          alert('Hello World');
-        },
-      },
-    ]);
+    const cleanupCommands = helpers.registerCommand(
+      defineCommand(
+        {
+          name: 'Say hello world',
+          description: 'Alerts hello world',
+          onAction: () => {
+            alert('Hello World');
+          },
+        }
+      )
+    );
+
+    const cleanupPages = helpers.registerPage(
+      definePage(
+        {
+          name: 'SvelteKit Docs',
+          description: 'Link to the Official SvelteKit documentation',
+          url: 'https://kit.svelte.dev/docs/introduction',
+        }
+      )
+    );
 
     return () => {
-      unregisterPages();
-      unregisterCommands();
+      cleanupCommands();
+      cleanupPages();
     };
   });
 </script>
@@ -115,89 +128,134 @@ For adding dynamic pages/commands, you can use the helpers exported by the compo
 ```
 
 
-## Headless usage
+### Headless usage
 
-The core of the library is the headless logic that can be used to create your own implementation of the Command Palette.
+The library exposes a `createPalette` function that can be used to create all the logic and state handling for a custom palette.
 
-For reference, the default implementation can be found [here](./src/lib/default/CommandPalette.svelte).
+For an implementation reference, you can check the [HyperPalette.svelte](./src/lib/default/HyperPalette.svelte).
 
-When creating your own implementation, the `createCommandPalette` can recive an optional options object with the following properties:
+When creating your own implementation the `createPalette` receives an options object to configure the behavior of the palette and the modes that it will handle of the shape:
 
 ```ts
-type CreateCommandPaletteOptions = {
-  portal?: HTMLElement | string | false | undefined;
-  emptyMode?: ResultsEmptyMode;
-  defaultOpen?: boolean;
-  open?: Writable<boolean>;
-  pages?: HyperPage[];
-  commands?: HyperCommand[];
-  history?: HyperId[];
-  selectedIdx?: number | undefined;
-  selectedId?: HyperId;
-  inputText?: string;
+type PaletteOptions = {
+    /**
+     * Whether to close the palette when the user clicks outside of it.
+     * 
+     * @default true
+     */
+    closeOnClickOutside?: boolean;
+    /**
+     * Whether to close the palette when the user presses the escape key.
+     * 
+     * @default true
+     */
+    closeOnEscape?: boolean;
+    /**
+     * Debounce time for processing the search input in milliseconds.
+     * 
+     * A value greater than 0 will debounce the input. Otherwise, the input will be processed immediately.
+     * 
+     * @default 150
+     */
+    debounce?: number;
+    /**
+     * Default values for initializing the palette.
+     */
+    defaults?: PaletteDefaultsOptions<string>;
+    /**
+     * The configuration for the different modes of the palette.
+     * 
+     * Each key is the name of the mode and the value is the configuration for that mode.
+     */
+    modes: PaletteModesOptions;
+    /**
+     * A `Writable` store to control the open state of the palette from outside.
+     */
+    open?: Writable<boolean>;
+    /**
+     * A `Writable` store to control the placeholder of the search input from outside.
+     */
+    placeholder?: Writable<string | undefined>;
+    /**
+     * The target element to append the palette to.
+     * 
+     * - `false` portal is disabled.
+     * - `string` a css selector for the portal target.
+     * - `HTMLElement` the portal target.
+     * 
+     * @default false
+     */
+    portal?: HTMLElement | string | false;
+    /**
+     * Whether to reset the palette state when it is opened.
+     * 
+     * When set to `true` takes precedence over the `closeAction` of the modes.
+     * 
+     * @default false
+     */
+    resetOnOpen?: boolean;
 };
 ```
 
-The `createCommandPalette` function returns an object with the following properties:
+The function returns an object of the shape:
 
 ```ts
-type CreateCommandPaletteReturn = {
+type CreatePaletteReturn = {
     elements: {
-      portal: builderPortal,
-      palette: builderPalette,
-      panel: builderPanel,
-      form: builderForm,
-      label: builderLabel,
-      input: builderInput,
-      command: builderCommand,
-      page: builderPage,
-    },
-    states: {
-      commands: Writable<HyperCommand[]>,
-      matchingCommands: Readable<HyperCommand[]>,
-      pages: Writable<HyperPage[]>,
-      matchingPages: Readable<HyperPage[]>,
-      history: Writable<HyperId[]>,
-      inputText: Writable<string>,
-      currentCommand: Readable<HyperCommand | undefined>,
-      error: Readable<unknown | undefined>,
-      open: Writable<boolean>,
-      portalTarget: Writable<HTMLElement | undefined>,
-      paletteMode: Readable<PaletteMode>,
+        palette: BuilderPalette,
+        panel: BuilderPanel,
+        form: BuilderForm,
+        label: BuilderLabel,
+        input: BuilderInput,
+        item: BuilderItem,
     },
     helpers: {
-      openPalette,
-      closePalette,
-      togglePalette,
-      registerPage,
-      unregisterPage,
-      registerCommand,
-      unregisterCommand,
-      registerDefaultShortcuts,
-      search,
-    },
-}
+        registerItem: (mode: Mode, item: OneOrMany<AnyHyperItem>, override?: boolean, silent?: boolean) => Cleanup;
+        unregisterItem: (mode: Mode, item: OneOrMany<ItemMatcher<AnyHyperItem>>) => void;
+        search: (pattern: string) => void;
+        openPalette: (mode?: Modes) => void;
+        closePalette: () => void;
+        togglePalette: () => void;
+        registerPaletteShortcuts: () => void;
+        unregisterPaletteShortcuts: () => void;
+    };
+    states: {
+        open: Writable<boolean>;
+        error: Writable<PaletteError | undefined>;
+        mode: Writable<Modes>;
+        modes: {
+            [Mode in Modes] : {
+                items: Writable<AnyHyperItem[]>;
+                results: Writable<AnyHyperItem[]>;
+                history: Writable<HyperItemId[]>;
+                current: Writable<AnyHyperItem | undefined>;
+            };
+            placeholder: Writable<string | undefined>;
+            portal: Writable<HTMLElement | string | false>;
+            searchInput: Writable<string>;
+        };
+    };
+};
 ```
 
-The `elements` object contains the builders for the different elements that compose the Command Palette.
+The `elements` object contains the builders for the different elements needed to create the palette markup.
 
-The `states` object contains the stores that can be used to subscribe to the state of the Command Palette.
+The `states` object contains the stores that hold the internal state of the palette.
 
-The `helpers` object contains the exposed functions that can be used to interact with the internal state of the Command Palette.
-
-
-## Contributing
-
-Contributions are welcome and appreciated.
-
-If you have any suggestions, feedback or issues, please [open an issue][issues] or submit a pull request.
+The `helpers` object contains the functions to interact with the palette and its items.
 
 
 ## Acknowledgements
 
-- [Svelte-Command-Palette][svelte-command-palette]
 - [Melt-UI][melt-ui]
 - [Tinykeys][tinykeys]
+
+
+## Contributing
+
+Any kind of contribution is welcome.
+
+If you have any suggestions, feedback or issues, please [open an issue][issues] or submit a pull request with your fix or feature.
 
 
 ## License
@@ -205,8 +263,8 @@ If you have any suggestions, feedback or issues, please [open an issue][issues] 
 [MIT](./LICENSE)
 
 
-[svelte-kit]: https://github.com/sveltejs/kit
-[svelte-command-palette]: https://github.com/rohitpotato/svelte-command-palette
-[melt-ui]: https://github.com/melt-ui/melt-ui
-[tinykeys]: https://github.com/jamiebuilds/tinykeys
 [issues]: https://github.com/J-Josu/svelte-hypercommands/issues
+[melt-ui]: https://github.com/melt-ui/melt-ui
+[svelte]: https://svelte.dev/
+[svelte-kit]: https://github.com/sveltejs/kit
+[tinykeys]: https://github.com/jamiebuilds/tinykeys

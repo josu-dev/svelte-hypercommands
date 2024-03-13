@@ -9,9 +9,10 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "noUncheckedIndexedAccess": false,
     "noErrorTruncation": true,
+    "noImplicitAny": true,
+    "noUncheckedIndexedAccess": true,
     "module":"NodeNext",
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "NodeNext"
   }
 }

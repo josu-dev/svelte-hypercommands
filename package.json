@@ -1,13 +1,14 @@
 {
   "name": "svelte-hypercommands",
-  "version": "0.0.12",
-  "description": "A Headless Palette for your Svelte app",
+  "version": "0.1.0",
+  "description": "A Headless Hyper Palette for your Svelte app",
   "keywords": [
     "sveltekit",
     "svelte",
     "command palette",
     "commands",
-    "keybindings"
+    "palette",
+    "keybinding"
   ],
   "license": "MIT",
   "bugs": "https://github.com/J-Josu/svelte-hypercommands/issues",
@@ -46,7 +47,7 @@
         "./dist/index.d.ts"
       ],
       "HyperPalette.svelte": [
-        "./dist/palette/HyperPalette.svelte.d.ts"
+        "./dist/default/HyperPalette.svelte.d.ts"
       ]
     }
   },

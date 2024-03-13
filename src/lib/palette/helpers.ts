@@ -40,7 +40,7 @@ export function defineActionable<T extends [any, ...any]>(items: ActionablesDefi
 
 export function normalizeNavigable(item: HyperNavigableDef): HyperNavigable {
     const external = !item.url.startsWith('/');
-    let cleanUrl = item.url.split('?')[0];
+    let cleanUrl = item.url.split('?')[0] ?? '/';
     let urlHostPathname;
 
     if (external) {
@@ -103,7 +103,7 @@ export function defineSearchable(items: SearchablesDefinition): HyperSearchable[
 
 const dinamicRouteRegex = /\/\[[^\]]+\]/i;
 
-export function definePagesFromRoutes({ root = 'index' } = { root: 'index' as const }): HyperNavigable[] {
+export function navigablesFromRoutes({ root = 'index' } = { root: 'index' as const }): HyperNavigable[] {
     const modules = import.meta.glob('/src/routes/**/+page.svelte');
     const pages: HyperNavigable[] = [];
     for (const path in modules) {

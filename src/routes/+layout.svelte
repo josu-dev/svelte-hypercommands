@@ -2,7 +2,7 @@
   import HyperPalette, {
     defineCommand,
   } from '$lib/default/HyperPalette.svelte';
-  import { definePagesFromRoutes } from '$lib/index.js';
+  import { navigablesFromRoutes } from '$lib/index.js';
   import '../app.css';
 
   const commands = defineCommand(
@@ -29,7 +29,7 @@
     },
   );
 
-  const pages = definePagesFromRoutes();
+  const pages = navigablesFromRoutes();
 </script>
 
 <HyperPalette {commands} {pages} />
