@@ -245,6 +245,11 @@ The `states` object contains the stores that hold the internal state of the pale
 The `helpers` object contains the functions to interact with the palette and its items.
 
 
+### Caution
+
+Altering the internal state of the palette directly with the stores of the `states` object isn't guaranteed to work as expected. The `helpers` object should be used to interact with the palette state and its items.
+
+
 ## Acknowledgements
 
 - [Melt-UI][melt-ui]
