@@ -310,7 +310,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             selected.sync();
         }
         else {
-            selected.value.id = results[0].id;
+            selected.value.id = results[0]!.id;
             selected.value.idx = 0;
             selected.sync();
         }
@@ -654,12 +654,12 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         const selectedIdx = selected.value.idx;
         if (selectedIdx === -1) {
             selected.value.idx = 0;
-            selected.value.id = results[0].id;
+            selected.value.id = results[0]!.id;
         }
         else {
             const newIdx = (selectedIdx + 1) % results.length;
             selected.value.idx = newIdx;
-            selected.value.id = results[newIdx].id;
+            selected.value.id = results[newIdx]!.id;
         }
 
         selected.sync();
@@ -674,12 +674,12 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         const selectedIdx = selected.value.idx;
         if (selectedIdx === -1) {
             selected.value.idx = results.length - 1;
-            selected.value.id = results[results.length - 1].id;
+            selected.value.id = results[results.length - 1]!.id;
         }
         else {
             const newIdx = (selectedIdx - 1 + results.length) % results.length;
             selected.value.idx = newIdx;
-            selected.value.id = results[newIdx].id;
+            selected.value.id = results[newIdx]!.id;
         }
 
         selected.sync();
@@ -695,7 +695,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             const new_item = unsafe_item;
             let found_idx = -1;
             for (let i = 0; i < _mode.rawAll.length; i++) {
-                if (_mode.rawAll[i].id === new_item.id) {
+                if (_mode.rawAll[i]!.id === new_item.id) {
                     found_idx = i;
                     break;
                 }
@@ -715,7 +715,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             }
 
             if (override) {
-                const removed = _mode.rawAll[found_idx];
+                const removed = _mode.rawAll[found_idx]!;
                 if ('shortcut' in removed) {
                     _unregister_shortcut(removed);
                 }
@@ -738,7 +738,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             }
 
             throw new HyperPaletteError(
-                `Item with id ${new_item.id} already exists in the palette, current ${_mode.rawAll[found_idx].name} new ${new_item.name}`
+                `Item with id ${new_item.id} already exists in the palette, current ${_mode.rawAll[found_idx]?.name} new ${new_item.name}`
             );
         }
 
@@ -775,7 +775,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             for (const new_item of new_items) {
                 let idx = -1;
                 for (let i = 0; i < _mode.rawAll.length; i++) {
-                    if (_mode.rawAll[i].id === new_item.id) {
+                    if (_mode.rawAll[i]!.id === new_item.id) {
                         idx = i;
                         break;
                     }
@@ -793,7 +793,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                     new_item.onUnregister?.(new_item);
                 }
                 for (let i = 0; i < _mode.rawAllSorted.length; i++) {
-                    if (_mode.rawAllSorted[i].id === new_item.id) {
+                    if (_mode.rawAllSorted[i]!.id === new_item.id) {
                         _mode.rawAllSorted.splice(i, 1);
                         break;
                     }
@@ -826,7 +826,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             to_remove.length = 0;
             if (typeof selector === 'string') {
                 for (let i = 0; i < _mode.rawAll.length; i++) {
-                    if (_mode.rawAll[i].id === selector) {
+                    if (_mode.rawAll[i]!.id === selector) {
                         to_remove.push(i);
                         break;
                     }
@@ -834,7 +834,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             }
             else if (typeof selector === 'function') {
                 for (let i = 0; i < _mode.rawAll.length; i++) {
-                    if (selector(_mode.rawAll[i])) {
+                    if (selector(_mode.rawAll[i]!)) {
                         to_remove.push(i);
                     }
                 }
@@ -853,8 +853,8 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             }
 
             for (let i = to_remove.length - 1; i >= 0; i--) {
-                const idx = to_remove[i];
-                const removed = _mode.rawAll[idx];
+                const idx = to_remove[i]!;
+                const removed = _mode.rawAll[idx]!;
                 removed_items.push(removed);
                 _mode.rawAll.splice(idx, 1);
                 _mode.items.value.splice(idx, 1);
@@ -865,7 +865,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                     removed.onUnregister?.(removed);
                 }
                 for (let i = 0; i < _mode.rawAllSorted.length; i++) {
-                    if (_mode.rawAllSorted[i].id === removed.id) {
+                    if (_mode.rawAllSorted[i]!.id === removed.id) {
                         _mode.rawAllSorted.splice(i, 1);
                         break;
                     }
@@ -988,7 +988,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         action: (node) => {
             function on_submit(event: SubmitEvent) {
                 event.preventDefault();
-                if (_mode_state.results.value.length === 0) {
+                if (!_mode_state.results.value.length) {
                     return;
                 }
 
@@ -996,13 +996,13 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 let item: AnyHyperItem;
                 if (selectedIdx < 0) {
                     selectedIdx = 0;
-                    item = _mode_state.results.value[selectedIdx];
+                    item = _mode_state.results.value[selectedIdx]!;
                     selected.value.id = item.id;
                     selected.value.idx = selectedIdx;
                     selected.sync();
                 }
                 else {
-                    item = _mode_state.results.value[selectedIdx];
+                    item = _mode_state.results.value[selectedIdx]!;
                 }
 
                 if (!item) {
@@ -1151,7 +1151,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                 let idx = -1;
                 let item: AnyHyperItem | undefined;
                 for (let i = 0; i < _mode_state.results.value.length; i++) {
-                    if (_mode_state.results.value[i].id === el_id) {
+                    if (_mode_state.results.value[i]!.id === el_id) {
                         idx = i;
                         item = _mode_state.results.value[i];
                         break;

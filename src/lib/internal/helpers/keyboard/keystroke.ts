@@ -189,13 +189,13 @@ class KeyBindingHandler {
         }
 
         for (let i = 0; i < this.keyBindings.length; i++) {
-            const keyBinding = this.keyBindings[i];
-            const sequence = keyBinding[0];
-            const callback = keyBinding[1];
+            const keyBinding = this.keyBindings[i]!;
+            const sequence = keyBinding[0]!;
+            const callback = keyBinding[1]!;
 
             const prev = this.#possibleMatches.get(sequence);
             const remainingExpectedPresses = prev ? prev : sequence;
-            const currentExpectedPress = remainingExpectedPresses[0];
+            const currentExpectedPress = remainingExpectedPresses[0]!;
 
             const matches = match(event, currentExpectedPress);
 
@@ -215,14 +215,14 @@ class KeyBindingHandler {
 
                 const callbacksToRemove: number[] = [];
                 for (let i = 0; i < callback.length; i++) {
-                    const cb = callback[i];
+                    const cb = callback[i]!;
                     if (cb.once) {
                         callbacksToRemove.push(i);
                     }
                     cb(event);
                 }
                 for (let i = callbacksToRemove.length - 1; i >= 0; i--) {
-                    callback.splice(callbacksToRemove[i], 1);
+                    callback.splice(callbacksToRemove[i]!, 1);
                 }
             }
         }
@@ -250,17 +250,17 @@ class KeyBindingHandler {
 
         let existingKeyBindingIndex = -1;
         for (let i = 0; i < this.keyBindings.length; i++) {
-            const existingKeyBinding = this.keyBindings[i][0];
+            const existingKeyBinding = this.keyBindings[i]![0]!;
             if (existingKeyBinding.length !== keyBinding.length) {
                 continue;
             }
             let match = true;
             for (let j = 0; j < existingKeyBinding.length; j++) {
-                if (existingKeyBinding[j][0].length !== keyBinding[j][0].length) {
+                if (existingKeyBinding[j]![0].length !== keyBinding[j]![0].length) {
                     match = false;
                     break;
                 }
-                if (existingKeyBinding[j][1] !== keyBinding[j][1]) {
+                if (existingKeyBinding[j]![1] !== keyBinding[j]![1]) {
                     match = false;
                     break;
                 }
@@ -274,7 +274,7 @@ class KeyBindingHandler {
         if (existingKeyBindingIndex === -1) {
             this.keyBindings.push([keyBinding, [callback]]);
         } else {
-            this.keyBindings[existingKeyBindingIndex][1].push(callback);
+            this.keyBindings[existingKeyBindingIndex]![1].push(callback);
         }
     }
 
@@ -286,11 +286,11 @@ class KeyBindingHandler {
                 }
                 let match = true;
                 for (let j = 0; j < existingKeyBinding.length; j++) {
-                    if (existingKeyBinding[j][0].length !== keyBinding[j][0].length) {
+                    if (existingKeyBinding[j]![0].length !== keyBinding[j]![0].length) {
                         match = false;
                         break;
                     }
-                    if (existingKeyBinding[j][1] !== keyBinding[j][1]) {
+                    if (existingKeyBinding[j]![1] !== keyBinding[j]![1]) {
                         match = false;
                         break;
                     }
@@ -304,7 +304,7 @@ class KeyBindingHandler {
         if (existingKeyBindingIndex === -1) {
             return;
         }
-        const existingCallbacks = this.keyBindings[existingKeyBindingIndex][1];
+        const existingCallbacks = this.keyBindings[existingKeyBindingIndex]![1];
         existingCallbacks.splice(existingCallbacks.indexOf(callback), 1);
         if (existingCallbacks.length === 0) {
             this.keyBindings.splice(existingKeyBindingIndex, 1);

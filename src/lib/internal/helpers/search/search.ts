@@ -34,7 +34,7 @@ export function generateSearchableItems<
 >(mapper: ItemToSearchableText<T>, data: T[], offset: number = 0) {
     const result: S[] = [];
     for (let i = 0; i < data.length; i++) {
-        const item = data[i];
+        const item = data[i]!;
         result.push({
             item,
             AID: offset + i,
@@ -102,7 +102,7 @@ export class Searcher<
     add(item: OneOrMany<TSource>): void {
         const items = Array.isArray(item) ? item : [item];
         for (let i = 0; i < items.length; i++) {
-            const item = items[i];
+            const item = items[i]!;
             this.#sourceItems.push(item);
             this.#items.push({
                 item,
@@ -119,7 +119,7 @@ export class Searcher<
     remove(selector: ItemSelector<TSource>): TSource[] {
         const removedItems: TSource[] = [];
         for (let i = this.#items.length - 1; i >= 0; i--) {
-            const item = this.#items[i];
+            const item = this.#items[i]!;
             if (selector(item.item, item.AID)) {
                 this.#items.splice(i, 1);
                 this.#sourceItems.splice(i, 1);
@@ -147,7 +147,7 @@ export class Searcher<
             }
 
             for (let i = 0; i < this.#items.length; i++) {
-                const item = this.#items[i];
+                const item = this.#items[i]!;
                 this.#itemsFiltered.push(item);
                 this.#sourceItemsFiltered.push(item.item);
             }
@@ -156,7 +156,7 @@ export class Searcher<
         }
 
         for (let i = 0; i < this.#items.length; i++) {
-            const item = this.#items[i];
+            const item = this.#items[i]!;
             let searchIndex = 0;
             for (let charIndex = 0; charIndex < item.searchableText.length; charIndex++) {
                 if (item.searchableText[charIndex] === searchText[searchIndex]) {
@@ -184,7 +184,7 @@ export class Searcher<
             }
 
             for (let i = 0; i < this.#items.length; i++) {
-                const item = this.#items[i];
+                const item = this.#items[i]!;
                 filteredItems.push(item);
                 filteredSourceItems.push(item.item);
             }
@@ -193,7 +193,7 @@ export class Searcher<
         }
 
         for (let i = 0; i < this.#items.length; i++) {
-            const item = this.#items[i];
+            const item = this.#items[i]!;
             let searchIndex = 0;
             for (let charIndex = 0; charIndex < item.searchableText.length; charIndex++) {
                 if (item.searchableText[charIndex] === searchText[searchIndex]) {
@@ -230,7 +230,7 @@ export class Searcher<
         this.#items.sort(comparator);
         this.#sourceItems.length = 0;
         for (let i = 0; i < this.#items.length; i++) {
-            this.#sourceItems.push(this.#items[i].item);
+            this.#sourceItems.push(this.#items[i]!.item);
         }
 
         if (this.#filterOnUpdate) {
