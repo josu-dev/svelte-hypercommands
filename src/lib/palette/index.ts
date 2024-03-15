@@ -1,4 +1,4 @@
-export { ACTIONABLE_CLOSE_ON, HC, HYPER_ITEM, NAVIGABLE_CLOSE_ON, NO_RESULTS_MODE, PALETTE_CLOSE_ACTION, SEARCHABLE_CLOSE_ON, SORT_MODE } from './constants.js';
+export { ACTIONABLE_CLOSE_ON, CLOSE_ACTION, HC, HYPER_ITEM, NAVIGABLE_CLOSE_ON, NO_RESULTS_MODE, OPEN_ACTION, SEARCHABLE_CLOSE_ON, SORT_MODE, UPDATE_ACTION } from './constants.js';
 export { createPalette } from './create.js';
 export { DuplicatedIdError, HyperPaletteError } from './errors.js';
 export { defineActionable, defineNavigable, defineSearchable, getProjectRoutes, navigablesFromRoutes, shortcutToKbd } from './helpers.js';

@@ -29,19 +29,30 @@ export const SEARCHABLE_CLOSE_ON = {
     ON_SUCCESS: 'ON_SUCCESS',
 } as const;
 
-export const PALETTE_CLOSE_ACTION = {
-    KEEP: 'KEEP',
-    KEEP_CLOSE: 'KEEP_CLOSE',
+export const OPEN_ACTION = {
+    NO_ACTION: 'NO_ACTION',
+    RESET: 'RESET',
+    UPDATE: 'UPDATE',
+} as const;
+
+export const UPDATE_ACTION = {
+    NO_ACTION: 'NO_ACTION',
+    UPDATE: 'UPDATE',
+    UPDATE_IF_OPEN: 'UPDATE_IF_OPEN',
+    UPDATE_IF_CURRENT: 'UPDATE_IF_CURRENT',
+} as const;
+
+export const CLOSE_ACTION = {
+    NO_ACTION: 'NO_ACTION',
+    CLOSE: 'CLOSE',
     RESET: 'RESET',
     RESET_CLOSE: 'RESET_CLOSE',
 } as const;
 
-export const PALETTE_ELEMENTS_IDS = ['palette', 'panel', 'form', 'label', 'input'] as const;
-
 export const NO_RESULTS_MODE = {
     ALL: 'ALL',
     HISTORY: 'HISTORY',
-    NONE: 'NONE',
+    EMPTY: 'EMPTY',
 } as const;
 
 export const SORT_MODE = {
@@ -50,11 +61,16 @@ export const SORT_MODE = {
     UNSORTED: 'UNSORTED',
 } as const;
 
+export const PALETTE_ELEMENTS_IDS = ['palette', 'panel', 'form', 'label', 'input'] as const;
+
 export const HC = {
-    HYPER_ITEM: HYPER_ITEM,
-    ACTIONABLE_CLOSE_ON: ACTIONABLE_CLOSE_ON,
-    NAVIGABLE_CLOSE_ON: NAVIGABLE_CLOSE_ON,
-    PALETTE_CLOSE_ACTION: PALETTE_CLOSE_ACTION,
-    NO_RESULTS_MODE: NO_RESULTS_MODE,
-    SORT_MODE: SORT_MODE,
+    HYPER_ITEM,
+    ACTIONABLE_CLOSE_ON,
+    NAVIGABLE_CLOSE_ON,
+    SEARCHABLE_CLOSE_ON,
+    OPEN_ACTION,
+    UPDATE_ACTION,
+    CLOSE_ACTION,
+    NO_RESULTS_MODE,
+    SORT_MODE,
 } as const;

@@ -3,13 +3,13 @@ import { use_clickoutside, use_portal } from '$lib/internal/actions.js';
 import type { Cleanup, OneOrMany, WritableExposed } from '$lib/internal/helpers/index.js';
 import { Searcher, addKeyBinding, builder, exposeWritable, hyperId, writableExposed } from '$lib/internal/helpers/index.js';
 import { tick } from 'svelte';
-import { ACTIONABLE_CLOSE_ON, HYPER_ITEM, NAVIGABLE_CLOSE_ON, NO_RESULTS_MODE, PALETTE_CLOSE_ACTION, PALETTE_ELEMENTS_IDS, SEARCHABLE_CLOSE_ON, SORT_MODE } from './constants.js';
+import { ACTIONABLE_CLOSE_ON, CLOSE_ACTION, HYPER_ITEM, NAVIGABLE_CLOSE_ON, NO_RESULTS_MODE, OPEN_ACTION, PALETTE_ELEMENTS_IDS, SEARCHABLE_CLOSE_ON, SORT_MODE, UPDATE_ACTION } from './constants.js';
 import { HyperPaletteError } from './errors.js';
-import type { AnyHyperItem, AnyHyperModeOptions, CreatePaletteOptions, CreatePaletteReturn, HyperActionable, HyperItemType, HyperNavigable, HyperNavigableConfig, HyperSearchable, HyperSearchableConfig, ItemMatcher, ItemRequestSource, PaletteCloseAction, PaletteError, PaletteIds, PaletteModeSort, PaletteModeState, PaletteModesOptions, PaletteOptions, PaletteSelected } from './types.js';
+import type { AnyHyperItem, AnyHyperModeConfig, CloseAction, CreatePaletteOptions, CreatePaletteReturn, HyperActionable, HyperNavigable, HyperNavigableConfig, HyperSearchable, HyperSearchableConfig, ItemMatcher, ItemRequestSource, PaletteError, PaletteIds, PaletteModeSort, PaletteModeState, PaletteModesOptions, PaletteOptions, PaletteSelected } from './types.js';
 
 const INTERNAL_KEY = {
     SHORTCUT_OPEN: '__hyper_open_palette',
-    SHORCUT_CLOSE: '__hyper_close_palette',
+    SHORTCUT_CLOSE: '__hyper_close_palette',
     DATASET_HYPER_ID: 'hyperId',
 } as const;
 
@@ -35,7 +35,6 @@ const defaults = {
         placeholder: undefined,
     },
     portal: false,
-    resetOnOpen: false,
 } satisfies (
         Omit<PaletteOptions, 'defaults' | 'modes' | 'open' | 'placeholder'>
         & { defaults: Pick<PaletteOptions['defaults'], 'open' | 'placeholder' | 'search'>; }
@@ -109,16 +108,18 @@ function getModes<T extends PaletteModesOptions>(items: T): Map<string, PaletteM
             throw new HyperPaletteError(`Duplicate prefix: '${options.prefix}'`);
         }
 
-        let mode_config: AnyHyperModeOptions;
+        let mode_config: AnyHyperModeConfig;
         if (options.type === HYPER_ITEM.ACTIONABLE) {
             mode_config = {
                 type: HYPER_ITEM.ACTIONABLE,
                 prefix: options.prefix,
                 mapToSearch: options.mapToSearch,
-                closeAction: options.closeAction ?? PALETTE_CLOSE_ACTION.RESET_CLOSE,
+                shortcut: options.shortcut ?? [],
+                openAction: options.openAction ?? OPEN_ACTION.RESET,
+                updateAction: options.updateAction ?? UPDATE_ACTION.UPDATE_IF_OPEN,
+                closeAction: options.closeAction ?? CLOSE_ACTION.CLOSE,
                 closeOn: options.closeOn ?? ACTIONABLE_CLOSE_ON.ALWAYS,
                 emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
-                shortcut: options.shortcut ?? [],
                 sortBy: options.sortBy,
                 sortMode: options.sortMode ?? SORT_MODE.SORTED,
             };
@@ -128,14 +129,16 @@ function getModes<T extends PaletteModesOptions>(items: T): Map<string, PaletteM
                 type: HYPER_ITEM.NAVIGABLE,
                 prefix: options.prefix,
                 mapToSearch: options.mapToSearch,
-                closeAction: options.closeAction ?? PALETTE_CLOSE_ACTION.RESET_CLOSE,
-                closeOn: options.closeOn ?? NAVIGABLE_CLOSE_ON.ALWAYS,
-                emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
+                shortcut: options.shortcut ?? [],
                 onExternal: options.onExternal ?? ((url: string) => { window.open(url, '_blank'); }),
                 onLocal: options.onLocal ?? ((url: string) => { window.location.href = url; }),
                 onNavigation: options.onNavigation,
                 onError: options.onError,
-                shortcut: options.shortcut ?? [],
+                openAction: options.openAction ?? OPEN_ACTION.RESET,
+                updateAction: options.updateAction ?? UPDATE_ACTION.UPDATE_IF_OPEN,
+                closeAction: options.closeAction ?? CLOSE_ACTION.CLOSE,
+                closeOn: options.closeOn ?? NAVIGABLE_CLOSE_ON.ALWAYS,
+                emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
                 sortBy: options.sortBy,
                 sortMode: options.sortMode ?? SORT_MODE.SORTED,
             };
@@ -143,14 +146,16 @@ function getModes<T extends PaletteModesOptions>(items: T): Map<string, PaletteM
         else if (options.type === HYPER_ITEM.SEARCHABLE) {
             mode_config = {
                 type: HYPER_ITEM.SEARCHABLE,
-                mapToSearch: options.mapToSearch,
                 prefix: options.prefix,
+                mapToSearch: options.mapToSearch,
+                shortcut: options.shortcut ?? [],
                 onSelection: options.onSelection,
                 onError: options.onError,
-                closeAction: options.closeAction ?? PALETTE_CLOSE_ACTION.RESET_CLOSE,
+                openAction: options.openAction ?? OPEN_ACTION.RESET,
+                updateAction: options.updateAction ?? UPDATE_ACTION.UPDATE_IF_OPEN,
+                closeAction: options.closeAction ?? CLOSE_ACTION.CLOSE,
                 closeOn: options.closeOn ?? SEARCHABLE_CLOSE_ON.ALWAYS,
                 emptyMode: options.emptyMode ?? NO_RESULTS_MODE.ALL,
-                shortcut: options.shortcut ?? [],
                 sortBy: options.sortBy,
                 sortMode: options.sortMode ?? SORT_MODE.SORTED,
             };
@@ -257,11 +262,10 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
     const error = writableExposed<PaletteError<M> | undefined>(undefined);
     const placeholder = writableExposed(safeOptions.defaults.placeholder);
     const portal = writableExposed(safeOptions.portal);
-    const resetOnOpen = writableExposed(safeOptions.resetOnOpen);
     const selected = writableExposed<PaletteSelected>({
         el: undefined,
-        idx: -1,
         id: undefined,
+        idx: -1,
     });
 
     function _set_empty_results() {
@@ -270,6 +274,39 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         selected.value.id = undefined;
         selected.value.idx = -1;
         selected.sync();
+    }
+
+    function _search(mode: PaletteModeState, pattern: string): AnyHyperItem[] {
+        let results: AnyHyperItem[];
+        if (pattern === '') {
+            switch (mode.config.emptyMode) {
+                case NO_RESULTS_MODE.ALL:
+                    results = [...mode.rawAllSorted];
+                    break;
+                case NO_RESULTS_MODE.HISTORY:
+                    results = [];
+                    for (const id of mode.history.value) {
+                        for (const item of mode.rawAll) {
+                            if (item.id === id) {
+                                results.push(item);
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                case NO_RESULTS_MODE.EMPTY:
+                    results = [];
+                    break;
+                default:
+                    throw new HyperPaletteError(`Invalid empty mode: ${mode.config.emptyMode}`);
+            }
+        }
+        else {
+            results = mode.searcher.search(pattern);
+            mode.sort.sorter(results);
+        }
+
+        return results;
     }
 
     function _search_and_update(pattern: string) {
@@ -290,7 +327,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                         }
                     }
                     break;
-                case NO_RESULTS_MODE.NONE:
+                case NO_RESULTS_MODE.EMPTY:
                     results = [];
                     break;
                 default:
@@ -305,6 +342,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         _mode_state.results.set(results);
 
         if (results.length === 0) {
+            selected.value.el = undefined;
             selected.value.id = undefined;
             selected.value.idx = -1;
             selected.sync();
@@ -316,7 +354,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         }
     }
 
-    function _update_results() {
+    function _update_current_results() {
         let query = searchText.value;
         // POSSIBLE BUG: assumes prefix is always at the start of the query
         query = query.slice(_mode_state.config.prefix.length);
@@ -324,13 +362,13 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
     }
 
     function _open_palette(mode: string) {
-        _mode_state = _modes.get(mode) as PaletteModeState<HyperItemType>;
+        _mode_state = _modes.get(mode) as PaletteModeState;
 
         tick().then(() => {
             if (!_open.value || !_input_el) {
                 return;
             }
-            
+
             _input_el.value = searchText.value;
             _input_el.focus();
         });
@@ -338,25 +376,45 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         paletteMode.set(mode);
         _open.set(true);
 
-        if (!resetOnOpen.value) {
-            if (!searchText.value.startsWith(_mode_state.config.prefix)) {
-                searchText.set(_mode_state.config.prefix);
-            }
+        const open_action = _mode_state.config.openAction;
+
+        if (open_action === OPEN_ACTION.RESET) {
+            searchText.set(_mode_state.config.prefix);
+            _update_current_results();
             return;
         }
 
-        _mode_state.current.set(undefined);
-        searchText.set(_mode_state.config.prefix);
-        _update_results();
+        if (open_action === OPEN_ACTION.NO_ACTION) {
+            return;
+        }
+
+        if (!searchText.value.startsWith(_mode_state.config.prefix)) {
+            searchText.set(_mode_state.config.prefix);
+        }
+
+        _update_current_results();
     }
 
-    function _close_palette() {
-        if (!_open.value) {
+    function _resolve_update_action(mode: PaletteModeState) {
+        const update_action = mode.config.updateAction;
+        if (update_action === UPDATE_ACTION.UPDATE) {
+            mode.results.set(_search(mode, searchText.value));
             return;
         }
 
-        _open.set(false);
-        _resolve_close_action();
+        if (
+            _mode_state.mode === mode.mode
+            && (
+                update_action === UPDATE_ACTION.UPDATE_IF_CURRENT
+                || (
+                    update_action === UPDATE_ACTION.UPDATE_IF_OPEN
+                    && _open.value
+                )
+            )
+        ) {
+            _update_current_results();
+            return;
+        }
     }
 
     /**
@@ -365,13 +423,13 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
      * It doesn't reset the current item since it's handled by the specific item
      * resolve function
      */
-    function _resolve_close_action(close_action?: PaletteCloseAction) {
+    function _resolve_close_action(close_action?: CloseAction) {
         if (!close_action) {
             close_action = _mode_state.config.closeAction;
         }
 
-        const should_reset = close_action === PALETTE_CLOSE_ACTION.RESET || close_action === PALETTE_CLOSE_ACTION.RESET_CLOSE;
-        const should_close = close_action === PALETTE_CLOSE_ACTION.KEEP_CLOSE || close_action === PALETTE_CLOSE_ACTION.RESET_CLOSE;
+        const should_reset = close_action === CLOSE_ACTION.RESET || close_action === CLOSE_ACTION.RESET_CLOSE;
+        const should_close = close_action === CLOSE_ACTION.CLOSE || close_action === CLOSE_ACTION.RESET_CLOSE;
 
         _mode_state.lastInput = searchText.value;
 
@@ -385,8 +443,24 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         }
 
         if (should_close && _open.value) {
+            if (!should_reset) {
+                selected.value.el = undefined;
+                selected.value.id = undefined;
+                selected.value.idx = -1;
+                selected.sync();
+            }
+
             _open.set(false);
         }
+    }
+
+    function _close_palette() {
+        if (!_open.value) {
+            return;
+        }
+
+        _open.set(false);
+        _resolve_close_action();
     }
 
     async function _resolve_actionable(item: HyperActionable, source: ItemRequestSource) {
@@ -620,20 +694,20 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             _close_palette();
         }, { once: true });
         if (cleanup) {
-            _internal_cleanup.set(INTERNAL_KEY.SHORCUT_CLOSE, cleanup);
+            _internal_cleanup.set(INTERNAL_KEY.SHORTCUT_CLOSE, cleanup);
         }
     }
 
     function _unregister_escape_shortcut() {
-        const cleanup = _internal_cleanup.get(INTERNAL_KEY.SHORCUT_CLOSE);
+        const cleanup = _internal_cleanup.get(INTERNAL_KEY.SHORTCUT_CLOSE);
         if (cleanup) {
             cleanup();
-            _internal_cleanup.delete(INTERNAL_KEY.SHORCUT_CLOSE);
+            _internal_cleanup.delete(INTERNAL_KEY.SHORTCUT_CLOSE);
         }
     }
 
     function _unregister_palette_shortcuts() {
-        for (const key of [INTERNAL_KEY.SHORTCUT_OPEN, INTERNAL_KEY.SHORCUT_CLOSE]) {
+        for (const key of [INTERNAL_KEY.SHORTCUT_OPEN, INTERNAL_KEY.SHORTCUT_CLOSE]) {
             const cleanup = _shorcuts_cleanup.get(key);
             if (cleanup) {
                 for (const c of cleanup) {
@@ -761,8 +835,8 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
 
         _mode.items.sync();
 
-        if (_open.value && _mode_state.mode === mode) {
-            _update_results();
+        if (_mode.config.updateAction !== UPDATE_ACTION.NO_ACTION) {
+            _resolve_update_action(_mode);
         }
 
         return () => {
@@ -809,8 +883,8 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             });
 
             _mode.items.sync();
-            if (_open.value && _mode_state.mode === mode) {
-                _update_results();
+            if (_mode.config.updateAction !== UPDATE_ACTION.NO_ACTION) {
+                _resolve_update_action(_mode);
             }
         };
     }
@@ -886,8 +960,8 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
         });
 
         _mode.items.sync();
-        if (_open.value && _mode_state.mode === mode) {
-            _update_results();
+        if (_mode.config.updateAction !== UPDATE_ACTION.NO_ACTION) {
+            _resolve_update_action(_mode);
         }
     }
 
@@ -1081,6 +1155,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
                     force_search = true;
                     const mode = _modes.get(newInputMode);
                     if (!mode) {
+                        // POSSIBLE BUG: This should error out instead of silently failing
                         _set_empty_results();
                         return;
                     }

@@ -7,6 +7,18 @@ import type * as C from './constants.js';
 // Constants
 //
 
+export type PaletteMode = string;
+
+export type OpenAction = Values<typeof C.OPEN_ACTION>;
+
+export type UpdateAction = Values<typeof C.UPDATE_ACTION>;
+
+export type CloseAction = Values<typeof C.CLOSE_ACTION>;
+
+export type NoResultsMode = Values<typeof C.NO_RESULTS_MODE>;
+
+export type SortMode = Values<typeof C.SORT_MODE>;
+
 export type HyperItemType = Values<typeof C.HYPER_ITEM>;
 
 export type HyperActionableType = typeof C.HYPER_ITEM.ACTIONABLE;
@@ -15,19 +27,11 @@ export type HyperNavigableType = typeof C.HYPER_ITEM.NAVIGABLE;
 
 export type HyperSearchableType = typeof C.HYPER_ITEM.SEARCHABLE;
 
-export type PaletteMode = string;
-
-export type PaletteCloseAction = Values<typeof C.PALETTE_CLOSE_ACTION>;
-
 export type ActionableCloseOn = Values<typeof C.ACTIONABLE_CLOSE_ON>;
 
 export type NavigableCloseOn = Values<typeof C.NAVIGABLE_CLOSE_ON>;
 
 export type SearchableCloseOn = Values<typeof C.SEARCHABLE_CLOSE_ON>;
-
-export type ResultsEmptyMode = Values<typeof C.NO_RESULTS_MODE>;
-
-export type SortMode = Values<typeof C.SORT_MODE>;
 
 //
 // User defined preferences
@@ -87,11 +91,11 @@ export interface HyperItemBaseDef {
      */
     id?: HyperItemId;
     /**
-     * Overrides the default close action for the palette when the item is executed.
+     * Overrides the default `closeAction` for the current mode.
      * 
-     * @see {@link PaletteOptions.closeAction} for more information.
+     * @see {@link HyperModeBaseConfig.closeAction} for more information.
      */
-    closeAction?: PaletteCloseAction;
+    closeAction?: CloseAction;
 }
 
 export interface HyperItemBase<T extends HyperItemType = HyperItemType> {
@@ -314,36 +318,65 @@ export type HyperModeBaseConfig<T extends HyperItemType> = {
      */
     type: T;
     /**
-     * Defines the action to take when the palette is closed.
-     * 
-     * - `KEEP`: Keeps the state as is.
-     * - `KEEP_CLOSE`: Keeps the state as is and closes the palette.
-     * - `RESET`: Resets the state to its initial value.
-     * - `RESET_CLOSE`: Resets the state to its initial value and closes the palette.
-     * 
-     * @default "RESET_CLOSE"
+     * Prefix used in the search input for setting the mode.
      */
-    closeAction: PaletteCloseAction;
-    /**
-     * What set of items to display if there is no input.
-     * 
-     * @default "ALL"
-     */
-    emptyMode: ResultsEmptyMode;
+    prefix: string;
     /**
      * Function to map the item to a searchable string of the desired item's properties.
      */
     mapToSearch: (item: ItemTypeToItem[T]) => string;
     /**
-     * Prefix used in the search input for setting the mode.
-     */
-    prefix: string;
-    /**
      * Shortcut/s to open the palette in the given mode.
      * 
      * @default []
      */
-    shortcut?: string[];
+    shortcut: string[];
+    /**
+     * Defines the action to take when the palette opens in this mode.
+     * 
+     * - `NO_ACTION`: Does nothing. The state remains the same as before the palette was opened.
+     * - `RESET`: Resets the state to its default value.
+     * - `UPDATE`: Updates the state with the current value of the search input.
+     * 
+     * This option takes precedence over the `closeAction` option.
+     * 
+     * @default "RESET"
+     */
+    openAction: OpenAction;
+    /**
+     * Defines the action to take when the items are updated in this mode.
+     * 
+     * - `NO_ACTION`: Does nothing. The state remains the same as before the items were updated.
+     * - `UPDATE`: Updates the results.
+     * - `UPDATE_IF_OPEN`: Updates the results if the palette is open in this mode.
+     * - `UPDATE_IF_CURRENT`: Updates the results if this is the current mode of the palette regardless of being open or not.
+     * 
+     * @default "UPDATE_IF_OPEN"
+     */
+    updateAction: UpdateAction;
+    /**
+     * Defines the action to take when the palette closes in this mode.
+     * 
+     * - `NO_ACTION`: Does nothing. The state remains the same as before the palette was closed.
+     * - `CLOSE`: Closes the palette and sets `selected` state to default.
+     * - `RESET`: Resets the state to its default value.
+     * - `RESET_CLOSE`: Resets the state to its default value and closes the palette.
+     * 
+     * This option takes precedence over the `openAction` option.
+     * 
+     * @default "CLOSE"
+     */
+    closeAction: CloseAction;
+    /**
+     * What set of items to display if there is no input.
+     * 
+     * - `ALL`: Display all items.
+     * - `HISTORY`: Display the items in the history.
+     * - `EMPTY`: Display no items.
+     * 
+     * @default "ALL"
+     */
+    emptyMode: NoResultsMode;
     /**
      * How the items should be sorted.
      * 
@@ -362,7 +395,7 @@ export type HyperModeBaseConfig<T extends HyperItemType> = {
      * 
      * @default "SORTED"
      */
-    sortMode?: SortMode;
+    sortMode: SortMode;
 };
 
 export interface HyperActionableConfig extends HyperModeBaseConfig<HyperActionableType> {
@@ -492,11 +525,6 @@ export type HyperSearchableOptions =
         'type' | 'mapToSearch' | 'prefix' | 'onSelection'
     >>;
 
-type ItemTypeToModeConfig =
-    | { [K in HyperActionableType]: HyperActionableConfig }
-    & { [K in HyperNavigableType]: HyperNavigableConfig }
-    & { [K in HyperSearchableType]: HyperSearchableConfig };
-
 type ItemTypeToModeOptions =
     | { [K in HyperActionableType]: HyperActionableOptions }
     & { [K in HyperNavigableType]: HyperNavigableOptions }
@@ -578,6 +606,8 @@ export type PaletteOptions = {
      */
     defaults: PaletteDefaultsOptions<string>;
     /**
+     * **IMPORTANT: Must exist a mode with '' as prefix as the default mode.**
+     * 
      * The configuration for the different modes of the palette.
      * 
      * Each key is the name of the mode and the value is the configuration for that mode.
@@ -601,14 +631,6 @@ export type PaletteOptions = {
      * @default false
      */
     portal: HTMLElement | string | false;
-    /**
-     * Whether to reset the palette state when it is opened.
-     * 
-     * When set to `true` takes precedence over the `closeAction` of the modes.
-     * 
-     * @default false
-     */
-    resetOnOpen: boolean;
 };
 
 export type CreatePaletteOptions =
@@ -619,7 +641,7 @@ export type CreatePaletteOptions =
             | 'debounce'
             | 'defaults'
             | 'open' | 'placeholder'
-            | 'portal' | 'resetOnOpen'
+            | 'portal'
         >
     >
     & Pick<PaletteOptions, 'modes'>;
@@ -639,6 +661,15 @@ export type PaletteModeSort =
         type: 'custom';
         sorter: (items: any[]) => void;
     };
+
+type ItemTypeToModeConfig =
+    | { [K in HyperActionableType]: HyperActionableConfig }
+    & { [K in HyperNavigableType]: HyperNavigableConfig }
+    & { [K in HyperSearchableType]: HyperSearchableConfig };
+
+export type AnyHyperModeConfig = HyperActionableConfig | HyperNavigableConfig | HyperSearchableConfig;
+
+export type PaletteModesConfigs = Record<string, AnyHyperModeConfig>;
 
 export type PaletteModeState<
     T extends HyperItemType = HyperItemType,
@@ -661,11 +692,13 @@ export type PaletteModeState<
 
 export type PaletteSelected = {
     el: HTMLElement | undefined;
-    idx: number;
     id: HyperId | string | undefined;
+    idx: number;
 };
 
-export type PaletteError<T extends PaletteModesOptions, Modes extends string = keyof T & string> = {
+type PaletteModesConfigsBase = Record<string, Pick<AnyHyperModeConfig, 'type' | 'mapToSearch' | 'prefix'>>;
+
+export type PaletteError<T extends PaletteModesConfigsBase, Modes extends string = keyof T & string> = {
     [Mode in Modes]: {
         error: unknown;
         mode: Mode;
@@ -674,7 +707,7 @@ export type PaletteError<T extends PaletteModesOptions, Modes extends string = k
     };
 }[Modes];
 
-export type PaletteModesReturn<T extends PaletteModesOptions> = {
+export type PaletteModesReturn<T extends PaletteModesConfigsBase> = {
     [Mode in keyof T]: {
         items: Writable<ItemTypeToItem[T[Mode]['type']][]>;
         results: Writable<ItemTypeToItem[T[Mode]['type']][]>;
@@ -683,7 +716,7 @@ export type PaletteModesReturn<T extends PaletteModesOptions> = {
     };
 };
 
-export type CreatePaletteReturn<T extends PaletteModesOptions, Modes extends string = keyof T & string> = {
+export type CreatePaletteReturn<T extends PaletteModesConfigsBase, Modes extends string = keyof T & string> = {
     elements: {
         [K in keyof PaletteElements]: any;
     };
