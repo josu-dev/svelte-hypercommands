@@ -362,6 +362,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
     }
 
     function _open_palette(mode: string) {
+        const changed_mode = _mode_state.mode !== mode;
         _mode_state = _modes.get(mode) as PaletteModeState;
 
         tick().then(() => {
@@ -388,9 +389,23 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             return;
         }
 
-        if (!searchText.value.startsWith(_mode_state.config.prefix)) {
+        // POSSIBLE BUG: '' prefix matches all modes, assuming only change is enough could lead to
+        // desync between the prefix and the actual mode optional implementation below
+        if (changed_mode || !searchText.value.startsWith(_mode_state.config.prefix)) {
             searchText.set(_mode_state.config.prefix);
         }
+        // if (_mode_state.config.prefix === '') {
+        //     const current_text = searchText.value;
+        //     for (const m of _modes.values()) {
+        //         if (m.mode && current_text.startsWith(m.config.prefix)) {
+        //             searchText.set(_mode_state.config.prefix);
+        //             break;
+        //         }
+        //     }
+        // }
+        // else if (!searchText.value.startsWith(_mode_state.config.prefix)) {
+        //     searchText.set(_mode_state.config.prefix);
+        // }
 
         _update_current_results();
     }

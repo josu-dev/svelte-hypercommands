@@ -37,6 +37,7 @@
         mapToSearch: (page) => page.name + page.urlHostPathname,
         shortcut: ['$mod+P'],
         sortBy: ['urlHostPathname'],
+        openAction: 'UPDATE'
       },
     },
     resetOnOpen: true,
