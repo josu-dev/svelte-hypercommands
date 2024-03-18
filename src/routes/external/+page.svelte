@@ -6,7 +6,7 @@
     const pagesCleanup = helpers.registerPage(
       definePage(
         {
-          url: 'https://github.com/J-Josu/svelte-hypercommands',
+          url: 'https://github.com/josu-dev/svelte-hypercommands',
           name: 'Project Repository',
         },
         {

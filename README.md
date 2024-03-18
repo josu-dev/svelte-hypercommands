@@ -268,7 +268,7 @@ If you have any suggestions, feedback or issues, please [open an issue][issues] 
 [MIT](./LICENSE)
 
 
-[issues]: https://github.com/J-Josu/svelte-hypercommands/issues
+[issues]: https://github.com/josu-dev/svelte-hypercommands/issues
 [melt-ui]: https://github.com/melt-ui/melt-ui
 [svelte]: https://svelte.dev/
 [svelte-kit]: https://github.com/sveltejs/kit
