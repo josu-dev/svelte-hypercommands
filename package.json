@@ -54,7 +54,7 @@
   "svelte": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "peerDependencies": {
-    "svelte": "3.x || 4.x"
+    "svelte": "3.x || 4.x || 5.x"
   },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^3.2.0",
