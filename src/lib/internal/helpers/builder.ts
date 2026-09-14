@@ -1,6 +1,9 @@
 import type { Action } from 'svelte/action';
-import type { Readable, Stores, StoresValues, Subscriber, Unsubscriber } from 'svelte/store';
+import type { Readable, Subscriber, Unsubscriber } from 'svelte/store';
 import { derived } from 'svelte/store';
+
+type Stores = Readable<any> | [Readable<any>, ...Array<Readable<any>>];
+type StoresValues<T> = T extends Readable<infer U> ? U : { [K in keyof T]: T[K] extends Readable<infer U> ? U : never };
 
 export function noop() { }
 
@@ -44,13 +47,9 @@ type BuilderArgs<
     S extends Stores | undefined,
     A extends Action<any, any>,
     R extends BuilderCallback<S>,
-> = S extends undefined ? {
-    stores?: never;
-    returned: () => Record<string, any>;
-    action?: A;
-} : {
-    stores: S;
-    returned: R;
+> = {
+    stores?: S;
+    returned: S extends Stores ? R : () => Record<string, any>;
     action?: A;
 };
 
@@ -82,9 +81,9 @@ export function builder<
     let derivedStore: BuilderStore<S, A, R, Name>;
     if (stores && returned) {
         derivedStore = derived(
-            stores,
+            stores as any,
             (values) => {
-                const result = returned(values);
+                const result = (returned as any)(values);
 
                 return hiddenAction({
                     ...result,
@@ -95,7 +94,7 @@ export function builder<
         );
     }
     else {
-        const result = (returned as () => R | undefined)?.() ?? {};
+        const result = (returned as () => Record<string, any> | undefined)?.() ?? {};
 
         derivedStore = lightable(
             hiddenAction({

@@ -14,7 +14,7 @@
   "bugs": "https://github.com/josu-dev/svelte-hypercommands/issues",
   "repository": {
     "type": "git",
-    "url": "https://github.com/josu-dev/svelte-hypercommands"
+    "url": "git+https://github.com/josu-dev/svelte-hypercommands.git"
   },
   "scripts": {
     "dev": "vite dev",
@@ -57,21 +57,21 @@
     "svelte": "3.x || 4.x || 5.x"
   },
   "devDependencies": {
-    "@sveltejs/adapter-auto": "^3.2.0",
-    "@sveltejs/kit": "^2.5.5",
-    "@sveltejs/package": "^2.3.1",
-    "@sveltejs/vite-plugin-svelte": "^3.0.2",
+    "@sveltejs/adapter-auto": "^3.3.1",
+    "@sveltejs/kit": "^2.16.0",
+    "@sveltejs/package": "^2.5.0",
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
     "@types/eslint": "8.56.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.57.0",
-    "eslint-plugin-svelte": "^2.36.0",
-    "publint": "^0.1.16",
-    "svelte": "^4.2.12",
-    "svelte-check": "^3.6.9",
+    "eslint-plugin-svelte": "^2.46.0",
+    "publint": "^0.2.12",
+    "svelte": "^5.0.0",
+    "svelte-check": "^4.0.0",
     "tslib": "^2.6.2",
     "typescript": "^5.4.5",
-    "vite": "^5.2.8"
+    "vite": "^6.0.0"
   },
   "type": "module"
 }

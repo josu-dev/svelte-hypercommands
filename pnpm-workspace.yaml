@@ -1,0 +1,18 @@
+allowBuilds:
+  esbuild: true
+  svelte-preprocess: true
+
+overrides:
+  minimatch: ">=9.0.9"
+  brace-expansion: ">=2.1.4"
+  braces: ">=3.0.3"
+  cross-spawn: ">=7.0.5"
+  flatted: ">=3.4.2"
+  picomatch: ">=2.3.2"
+  micromatch: ">=4.0.8"
+  js-yaml: ">=4.3.2"
+  ajv: ">=6.14.0"
+  postcss: ">=8.5.23"
+  nanoid: ">=3.3.18"
+  yaml: ">=1.10.3"
+  cookie: ">=0.7.0 <1.0.0"

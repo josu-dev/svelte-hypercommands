@@ -1139,7 +1139,7 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
             return {
                 id: ids.input,
                 type: 'text',
-                autocomplete: 'off',
+                autocomplete: 'off' as const,
                 spellcheck: false,
                 placeholder: $placeholder || undefined,
                 'aria-labelledby': ids.label,
@@ -1225,7 +1225,6 @@ export function createPalette<T extends CreatePaletteOptions, M extends T['modes
     });
 
     const builderItem = builder(elementName('item'), {
-        stores: [],
         returned: () => {
             return {
                 role: 'button',
